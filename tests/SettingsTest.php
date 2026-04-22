@@ -35,6 +35,13 @@ return [
             'assertion' => '',
         ]));
     },
+    'falls back to test mode when only partial credentials exist' => function (): void {
+        assert_same('test', Settings::get_mode([
+            'test_mode' => 'no',
+            'client_id' => 'client-123',
+            'assertion' => '',
+        ]));
+    },
     'test_mode checkbox defaults to enabled when unset' => function (): void {
         assert_true(Settings::is_test_mode([]));
     },
