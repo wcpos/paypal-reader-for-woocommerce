@@ -1,7 +1,7 @@
 # PayPal Reader for WooCommerce / WCPOS
 ## M1 Discovery Brief and Provisional v1 Design
 
-- **Status:** Draft for review
+- **Status:** M1 NO-GO recorded (offline session; live proof still missing)
 - **Date:** April 22, 2026
 - **Author:** OpenAI Codex
 - **Target org:** `wcpos`
@@ -100,9 +100,9 @@ A standalone plugin is preferred over extending the existing Stripe or SumUp rep
 
 ## 6. External dependencies and references
 
-This integration is based on Zettle / PayPal Reader Connect and related auth flows.
+This session used official Zettle / PayPal Reader Connect documentation as the source-backed input for the M1 spike, but it did **not** include live merchant credentials or live reader execution. The local spike implementation and evidence scaffolding were completed in this workspace; the live dependency checks remain outstanding.
 
-### Key documentation reviewed
+### Official references reviewed
 - Reader Connect reference  
   https://developer.zettle.com/docs/payment-integrations/reader-connect/reference
 - Reader Connect make payments  
@@ -120,94 +120,71 @@ This integration is based on Zettle / PayPal Reader Connect and related auth flo
 - Self-hosted app credentials  
   https://developer.zettle.com/docs/get-started/user-guides/create-app-credentials/create-app-credentials-for-self-hosted-app/create-credentials-self-hosted-app
 
-### Important documented signals
-- Zettle documents **assertion grant** for **self-hosted apps**.
-- Reader Connect reference documents integrator-facing endpoints including `POST /v1/integrator/link-offers/claim`, `GET /v1/integrator/links`, `DELETE /v1/integrator/links/{id}`, and `POST /v1/integrator/sessions`.
-- Reader Connect requires at least `READ:USERINFO` and `WRITE:USERINFO` for linking and session setup.
-- Reader Connect payment and WebSocket guides also show payment-scoped access requirements: `READ:PAYMENT` and `WRITE:PAYMENT`.
-- Integrator session configuration returns a response payload containing `location`, `authorized`, and `failed`; the returned `location` should be used as-is for the WebSocket target URL.
-- Link-claim requests use an 8-character pairing code and may include integrator tags such as a merchant-friendly device name.
-- `STATUS_REQUEST` returns `STATUS_RESPONSE` values such as `READY`, `BUSY`, and `NOT_CONNECTED`.
-- Payment messages use fields such as `PAYMENT_REQUEST`, `PAYMENT_PROGRESS_RESPONSE`, `PAYMENT_RESULT_RESPONSE`, `CANCEL_PAYMENT_REQUEST`, `internalTraceId`, `amount`, and `expiresAt`.
-- Reader Connect payment examples describe the amount as **fractional monetary units**.
-- Payment result examples include `resultStatus` values such as `COMPLETED`, `FAILED`, and `CANCELED`, with payload fields such as `CARD_PAYMENT_UUID`, masked PAN/card summary data, and nested reference fields like `trackingId` and `checkoutUUID`.
+### Documented facts carried into the design
+- Official Zettle docs describe two relevant grant types for this investigation: **authorization code** for public integrations and **assertion grant** for private integrations.
+- Official Zettle docs distinguish **self-hosted apps** and **partner-hosted apps**.
+- Official Zettle docs say assertion grant uses `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer` against `https://oauth.zettle.com/token`.
+- Official Zettle docs say assertion-grant access tokens have **no refresh token** and a **7200 second** lifetime.
+- Reader Connect documentation exposes the integrator link/session/payment flow that the plugin would need to exercise live before M2.
+- Reader Connect docs show `READ:USERINFO` and `WRITE:USERINFO` for linking/session work and `READ:PAYMENT` plus `WRITE:PAYMENT` for payment work, but this session did not live-validate that scope set end to end.
+- Reader Connect docs show that session configuration returns `location`, `authorized`, and `failed`, and that the returned `location` is the WebSocket URL to use as issued.
+- Reader Connect docs describe payment/result identifiers such as `internalTraceId`, `CARD_PAYMENT_UUID`, `trackingId`, and `checkoutUUID`; in this session those remain documented lookup candidates only, not proven verification references.
+
+### Session limit that controls this spec
+No live `ZETTLE_*` credentials were available here, so no live auth, link, session, status, payment, cancel, or reconciliation checks were executed. The design therefore stops at the M1 gate with a documented **NO-GO** for this session.
 
 ---
 
 ## 7. M1 discovery spike
 
-## 7.1 Purpose
+## 7.1 What this session completed
+This workspace now contains the local M1 spike implementation and evidence scaffolding needed to run the discovery flow later with live credentials and hardware. That includes the disposable scripts, harness code, markdown evidence templates, and the evidence-pack writer intended to capture auth, link, session, status, payment, cancellation, and reconciliation observations.
 
-M1 exists to resolve the five design decisions that currently block implementation:
+## 7.2 What this session did not complete
+This session did **not** have live `ZETTLE_*` credentials, so it did **not** execute any live auth, link claim/reuse, session creation, WebSocket status, payment, cancel, or browser-drop reconciliation checks. No live reader transcript was captured here.
 
-1. **Auth model and exact scopes**
-2. **Server-side verification source of truth**
-3. **Browser disconnect / reconciliation flow**
-4. **Idempotency and payment-attempt ownership**
-5. **Refund scope for v1**
+## 7.3 Actual M1 outcome for this session
+The spike answered the local implementation question, but it did **not** satisfy the M1 proof requirement. Because the live evidence was still missing at the end of the session, M1 ended here at the gate with **NO-GO** and M2 must not start from this session alone.
 
-No plugin scaffolding beyond disposable spike code should begin until these are answered.
+## 7.4 Outputs now present
+The following outputs exist after this session:
 
-## 7.2 Spike boundaries
+1. local spike code for the documented auth/link/session/payment investigation path
+2. evidence-pack scaffolding for auth, scopes, payment run, reconciliation, and go/no-go recording
+3. a written record that live proof is still missing
+4. an updated design spec that converts the session findings into explicit stop/go language
 
-M1 is a **discovery spike**, not the start of production implementation.
+### Evidence-pack inventory from this session
+Present now:
+- `paypal-reader-for-woocommerce-m1-spike/evidence/m1/scopes.md`
+- `paypal-reader-for-woocommerce-m1-spike/evidence/m1/auth-decision.md`
+- `paypal-reader-for-woocommerce-m1-spike/evidence/m1/payment-run-001.md`
+- `paypal-reader-for-woocommerce-m1-spike/evidence/m1/reconciliation-browser-drop.md`
+- `paypal-reader-for-woocommerce-m1-spike/evidence/m1/go-no-go.md`
 
-Allowed:
+Present only as offline/no-live-proof records:
+- `payment-run-001.md`
+- `reconciliation-browser-drop.md`
 
-- disposable scripts, curl/Postman collections, or throwaway harness code
-- temporary notes and redacted request/response captures
-- real-reader manual test runs
-- spec updates that convert findings into durable design decisions
+Still missing before M2:
+- a real auth transcript
+- a real link/session/status transcript
+- a real verified payment transcript
+- a real reconciliation/disconnect transcript
 
-Not allowed:
+## 7.5 Outputs still required before M2
+The following M1 outputs remain unresolved and must be produced by a later live run before M2:
 
-- bootstrapping the production plugin repo
-- committing production gateway classes or checkout UI integration
-- building release automation
-- presenting unresolved guesses as implementation decisions
+1. a live-tested auth model decision with real merchant credentials
+2. a live-tested exact scope list
+3. a named and live-tested server-side verification source of truth
+4. a live-tested browser disconnect / reconciliation path
+5. a live-backed confirmation of the retry rule after ambiguity
+6. a live-backed confirmation of whether any refund API is safe enough for v1
+7. at least one successful live payment transcript tied to verification evidence
 
-## 7.3 Required spike outputs
-
-M1 must produce the following concrete outputs:
-
-1. A written decision on **self-hosted vs partner-hosted app model**.
-2. A written list of **exact scopes required**.
-3. A tested and named **verification mechanism** for completed payments.
-4. A tested and documented **reconciliation path** for client disconnects.
-5. A written **idempotency model** for retries and duplicate requests.
-6. A written **refund decision**: in v1 or explicitly out of scope.
-7. A brief technical note on **currency representation** and **tipping scope**.
-
-## 7.4 Hard exit criteria
-
-M1 is complete only if all of the following are true:
-
-- A real merchant credential flow can obtain an access token usable for Reader Connect.
-- The exact required scopes are known and tested.
-- A reader can be linked successfully from the chosen app model.
-- A Reader Connect session can be created successfully.
-- A WebSocket can be opened successfully.
-- A `STATUS_REQUEST` can be sent and a valid reader status received.
-- A `PAYMENT_REQUEST` can be sent and a real payment result observed.
-- There is a named, tested server-side mechanism to verify the completed payment.
-- There is a defined reconcile path for browser drop / tab close / refresh mid-payment.
-- There is a written rule for whether a cashier may retry after an ambiguous payment state.
-
-If any one of these remains unresolved, M2 must not start.
-
-## 7.5 Evidence pack required before M2
-
-M1 should leave behind a compact evidence pack that another engineer can audit without rerunning the whole spike:
-
-1. redacted auth flow notes, including exactly how the merchant obtains the usable credentials
-2. the final tested scope list and where each scope was needed
-3. a redacted sample of a successful session-configuration response showing `location`, `authorized`, and `failed`
-4. at least one redacted real payment transcript showing:
-   - the attempt ID/internal trace ID
-   - the observed Reader Connect result references
-   - the separate server-side verification step
-5. a short reconciliation write-up for one disconnect scenario
-6. a one-page decision record covering verification, retry policy, and refund scope
+## 7.6 Hard gate status
+The M1 hard gate remains closed. This session proved the workspace is prepared for live testing, not that the PayPal Reader / Zettle integration path is production-viable.
 
 ---
 
@@ -215,92 +192,78 @@ M1 should leave behind a compact evidence pack that another engineer can audit w
 
 ## 8.1 Auth model
 
-### Current leading candidate
-Use a **self-hosted app** with **assertion grant**, because Zettle documents self-hosted apps this way.
+### Session finding
+The auth model is **not proven** in this session. Official docs still make **self-hosted assertion grant** the leading candidate for a merchant-installed private integration, while **authorization code** remains the documented public-integration grant and **partner-hosted** remains a separate documented app model.
 
-### Current candidate scope set
-The leading working assumption is that the plugin will require:
+### Source-backed auth facts
+- Assertion grant is documented for private integrations / self-hosted apps.
+- The token request uses `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer` against `https://oauth.zettle.com/token`.
+- Assertion-grant tokens are documented as having no refresh token and a 7200 second lifetime.
 
-- `READ:USERINFO`
-- `WRITE:USERINFO`
-- `READ:PAYMENT`
-- `WRITE:PAYMENT`
+### What this session actually proved
+- The local spike code and evidence scaffolding for the assertion-grant path were completed in this workspace.
+- No live `ZETTLE_*` credentials were available.
+- No live token exchange, link, session, status, or payment execution was run here.
 
-This set is still provisional until M1 proves that:
-
-- assertion-grant tokens can actually exercise the full reader + payment flow
-- no additional scopes are required
-- no documented scope can be dropped safely
-
-### What M1 must verify
-- Can the self-hosted assertion-grant model access the full Reader Connect and payment functionality needed for this plugin?
-- What are the exact required scopes?
-- Is a partner-hosted model required for any part of the flow?
-
-### Design consequence
-If self-hosted assertion grant works with the required scopes, the plugin can remain merchant-installed without external WCPOS infrastructure. If not, the entire credential and installation story changes and the plugin architecture must be revised before M2.
+### Current decision at the M1 gate
+Treat `self-hosted assertion grant` as the **documented leading candidate only**, not an approved implementation decision. A later live run must still prove whether self-hosted assertion grant is sufficient or whether a partner-hosted/public model is required.
 
 ## 8.2 Verification source of truth
 
-### Current requirement
-The plugin must verify payment completion server-side using an authoritative API or server-retrievable record.
+### Session finding
+The verification source of truth remains **unresolved**. This session did not execute any authoritative server-side lookup for a completed payment.
 
-### What is still unknown
-The exact mechanism is not yet named in this spec. Candidates may include:
-- lookup by payment UUID or card payment UUID
-- Purchase API lookup
-- another Zettle payment retrieval endpoint
-- a supported webhook or asynchronous server-side event, if one exists
+### What is established
+- Browser-visible references such as `CARD_PAYMENT_UUID`, `trackingId`, `checkoutUUID`, and `internalTraceId` are still treated as candidate lookup inputs only.
+- No browser-delivered result may be treated as proof of payment.
 
-### Working assumption until M1 proves otherwise
-The browser may surface useful references such as `CARD_PAYMENT_UUID`, `trackingId`, `checkoutUUID`, or the original `internalTraceId`, but those references are only **verification inputs**. They are not themselves proof of payment.
+### What is missing
+- No payment UUID lookup was exercised.
+- No Purchase API or alternate retrieval endpoint was exercised.
+- No webhook or server-side event source was validated.
 
-### Hard rule
-If M1 cannot name and test an authoritative verification mechanism, order completion must not be implemented and the project must not advance to beta.
+### Gate consequence
+Because no authoritative verification mechanism was named **and** tested in this session, order completion remains blocked and this session ends with M1 **NO-GO**.
 
 ## 8.3 Browser disconnect and reconciliation
 
-### Problem
-Reader Connect payment results are delivered over a browser WebSocket. That creates failure modes such as:
-- cashier closes tab mid-payment
-- page refresh during authorization
-- local network drop after card presentation
-- two tabs on the same order
+### Session finding
+No live browser disconnect or reconciliation scenario was executed in this session. There was no live reader/browser session available to observe tab close, refresh, crash, or network-drop behavior.
 
-### M1 requirement
-M1 must define exactly how the backend and POS recover from an incomplete client-side flow.
+### What is established locally
+- The spike workspace includes scaffolding to record reconciliation evidence when a live run is available.
+- The correct safety posture remains `reconciliation first, retry later`.
 
-### Provisional design direction
-Until M1 proves a better pattern, the backend should treat any lost-client state after `payment_requested` as **reconciliation first, retry later**:
+### Rule carried forward from this session
+Until a later live run proves a narrower recovery path, any lost-client state after `payment_requested` must be treated as ambiguous: mark the attempt `reconciliation_required`, block new attempts, and do not reopen checkout until server-side reconciliation proves the prior attempt unpaid.
 
-1. mark the attempt `reconciliation_required`
-2. block new attempts on the same order
-3. run server-side verification using the authoritative lookup
-4. only reopen checkout if the prior attempt is conclusively not paid
+### Gate consequence
+Because no live reconciliation evidence exists yet, this design area remains blocked at the M1 gate and contributes to the session NO-GO.
 
 ## 8.4 Idempotency and retries
 
-### Problem
-A flaky socket or impatient cashier can otherwise trigger duplicate payment attempts.
+### Session finding
+No live retry or duplicate-attempt scenario was executed in this session, so the retry model is not proven by hardware evidence here.
 
-### M1 requirement
-M1 must define who creates the attempt identifier, which identifier is reused across retries, and when a retry is forbidden because payment state is ambiguous.
+### Design decision carried forward to the gate
+Use a backend-owned attempt ID and reuse it as the Reader Connect `internalTraceId` for that attempt. If payment state becomes ambiguous, the retry rule is **not** to issue a new payment request immediately.
 
-### Provisional design direction
-Until M1 proves otherwise:
+### Required rule after ambiguity
+The rule from this session is `BLOCK_UNTIL_RECONCILED`: the cashier may not retry until the prior attempt is conclusively failed, cancelled, or reconciled as unpaid by the server-side source of truth.
 
-- the backend creates the canonical attempt ID
-- the attempt ID is reused as the Reader Connect `internalTraceId`
-- the backend also creates the session/channel ownership data tied to that attempt
-- retries create a **new** attempt only after the previous attempt is conclusively failed, cancelled, or reconciled as unpaid
+### Gate consequence
+This is the correct safety decision for now, but it remains live-unverified and therefore does not clear M1 on its own.
 
 ## 8.5 Refund scope
 
-### Current recommendation
-Refund automation is **out of scope for v1** unless M1 proves a safe, server-side refund API and WooCommerce refund mapping.
+### Session finding
+No live refund capability was investigated in this session. No refund API was exercised, and no WooCommerce-to-Zettle refund mapping was proven.
 
-### Merchant-facing consequence
-If refunds remain out of scope, the README and admin UI must say that refunds are handled manually in the merchant's PayPal/Zettle tools for the first release.
+### Decision for the M1 gate
+Refund scope remains **manual in v1** for this session. Merchant-facing documentation should continue to state that refunds are handled manually in PayPal/Zettle tools unless a later live investigation proves a safe server-side refund flow.
+
+### Gate consequence
+Refunds do not block the local spike itself, but the absence of live refund proof means the scope decision must stay conservative.
 
 ---
 
@@ -499,20 +462,21 @@ The `PAYMENT_REQUEST` payload is expected to include:
 - optional partner attribution if required
 
 ### 13.3 Currency and amount representation
-The v1 data model should treat amounts as:
+This session only confirmed the **documented** amount shape, not live market behavior. The design should still treat amounts as:
 
-- WooCommerce order total converted to **integer minor units**
+- WooCommerce order total converted to **integer minor units** before the Reader Connect request is built
 - currency stored explicitly on the attempt record
 - requested amount stored separately from any final settled amount
 
-M1 must verify exactly how Reader Connect expects amounts for the markets WCPOS intends to support and document unsupported currency/store combinations.
+Reader Connect documentation describes the request amount in fractional monetary units, which aligns with an integer-minor-unit internal model. Live currency/store validation is still required before M2 because this session did not execute any real payment requests.
 
 ### 13.4 Tipping scope
-Tipping should be treated as a **v1 optional feature flag**, not a core checkout dependency.
+No live tipping flow was investigated in this session. The only defensible M1-gate position is to keep tipping **out of the required checkout path**.
 
-Current recommendation:
-- default v1 behavior: **no tipping** unless M1 proves a simple, reliable configuration model
-- if enabled later in v1, tipping should be configured at the **store/plugin level**, not per cash register and not as an ad hoc cashier input
+Session decision:
+- default v1 behavior: **no tipping**
+- do not make tipping a dependency for M2 or the first beta
+- revisit only after the base auth/session/payment/verification path is proven live
 
 ### 13.5 Cancellation
 The frontend should support `CANCEL_PAYMENT_REQUEST`.
@@ -890,14 +854,23 @@ Trying to support too many advanced Reader Connect features in v1 may delay the 
 
 ## 24. Release criteria
 
-### Beta release criteria
+### M1 gate status from this session
+This session did **not** satisfy the release-entry criteria for M2 or beta work. The local spike implementation and evidence scaffolding are present, but the following proof is still missing:
+
+- live auth validation
+- live reader link validation
+- live session creation validation
+- live WebSocket status validation
+- at least one live payment run
+- a named and tested server-side verification lookup
+- at least one live disconnect/reconciliation check
+
+### Beta release criteria after a future GO
 Before `0.1.0-beta.1`:
-- M1 has passed all exit criteria
-- auth is validated
-- linking is validated
-- session creation is validated
+- a later M1 run has converted this session's NO-GO into a documented GO
+- auth, linking, session creation, and status checks are validated live
 - one successful verified payment on real hardware is documented
-- reconciliation path is tested at least once
+- the reconciliation path is tested at least once with live evidence
 - README setup flow is drafted
 - release ZIP workflow is working
 
@@ -914,21 +887,14 @@ Before `0.1.0`:
 
 ## 25. Recommendation
 
-Proceed with a **standalone WordPress plugin** and treat the current architecture as the **leading candidate**, not the final design.
+This session stops at the M1 gate with **NO-GO**. The correct recommendation is **do not start M2 or production plugin implementation from this session's evidence**.
 
-The immediate next step is **M1 discovery**, focused on:
+### Final M1 decision
+- Auth model: `self-hosted assertion grant remains the documented leading candidate, but it is not live-proven in this session`
+- Required scopes: `documented candidate set only: READ:USERINFO, WRITE:USERINFO, READ:PAYMENT, WRITE:PAYMENT; not live-validated in this session`
+- Verification source of truth: `unresolved; no authoritative server-side verification mechanism was exercised here`
+- Retry rule after ambiguity: `BLOCK_UNTIL_RECONCILED`
+- Refund scope: `manual in v1`
 
-1. locking the auth model and scopes
-2. naming and testing the server-side verification mechanism
-3. defining the disconnect/reconciliation flow
-4. defining idempotency and retry rules
-5. making an explicit refund-scope decision
-
-If M1 validates the current direction, continue with a standalone plugin using:
-
-- server-side auth handling
-- browser-side Reader Connect WebSocket orchestration
-- backend-owned payment attempts
-- strict server-side payment verification before WooCommerce order completion
-
-That gives the project the lowest-friction path from prototype to first beta while preserving payment integrity and matching existing WCPOS extension patterns.
+### Recommendation for the next session
+Proceed only with a fresh live M1 run that has working `ZETTLE_*` credentials, a real linked reader, and explicit capture of auth, link, session, status, payment, cancel, and reconciliation evidence. Until that proof exists, keep the architecture as a documented candidate only and preserve the NO-GO status recorded here.
