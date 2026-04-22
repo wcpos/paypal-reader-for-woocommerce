@@ -54,7 +54,14 @@ class Settings {
     }
 
     public static function use_mock_reader(): bool {
-        $enabled = defined('PRWC_USE_MOCK_READER') && constant('PRWC_USE_MOCK_READER');
+        // Use FILTER_VALIDATE_BOOLEAN so string values like "false", "0",
+        // "no", or "off" are not treated as truthy. Config tooling that
+        // injects wp-config constants as strings is a common source of
+        // accidentally-enabled mock mode in staging/prod.
+        $enabled = false;
+        if (defined('PRWC_USE_MOCK_READER')) {
+            $enabled = filter_var(constant('PRWC_USE_MOCK_READER'), FILTER_VALIDATE_BOOLEAN);
+        }
 
         if (function_exists('apply_filters')) {
             $enabled = (bool) apply_filters('paypal_reader_for_woocommerce_use_mock_reader', $enabled);
