@@ -28,6 +28,10 @@ else
   echo "WordPress already installed."
 fi
 
+echo "Enabling mock reader path via wp-config constants (CI/CD only)..."
+wp config set PRWC_USE_MOCK_READER true --raw --type=constant --path=/var/www/html >/dev/null
+wp config set PRWC_MOCK_CANCEL_BEHAVIOR "$MOCK_CANCEL_BEHAVIOR" --type=constant --path=/var/www/html >/dev/null
+
 if ! wp plugin is-installed woocommerce --path=/var/www/html >/dev/null 2>&1; then
   echo "Installing WooCommerce..."
   wp plugin install woocommerce --activate --path=/var/www/html
@@ -68,7 +72,7 @@ wp option update woocommerce_currency "USD" --path=/var/www/html
 wp rewrite structure '/%postname%/' --hard --path=/var/www/html
 wp rewrite flush --hard --path=/var/www/html
 wp option update woocommerce_paypal_reader_for_woocommerce_settings \
-  '{"enabled":"yes","title":"PayPal Reader","description":"Pay in person using PayPal Reader.","mode":"mock","mock_reader_name":"WCPOS Mock Reader","mock_cancel_behavior":"'"${MOCK_CANCEL_BEHAVIOR}"'"}' \
+  '{"enabled":"yes","title":"PayPal Reader","description":"Pay in person using PayPal Reader.","test_mode":"yes"}' \
   --format=json --path=/var/www/html
 
 PRODUCT_ID=$(wp post list --post_type=product --post_status=publish --format=ids --path=/var/www/html | awk '{print $1}')

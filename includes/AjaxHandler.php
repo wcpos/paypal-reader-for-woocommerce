@@ -121,9 +121,12 @@ class AjaxHandler {
 
     private function get_reader_service(): MockReaderService {
         $settings = Settings::get_gateway_settings();
+        $mode = Settings::get_mode($settings);
 
-        if (Settings::get_mode($settings) === 'live') {
-            Logger::log('Live mode selected without a real reader implementation; falling back to mock reader service.');
+        if ($mode === 'test') {
+            Logger::log('Test mode selected but the real Zettle test client is not implemented yet; falling back to the mock reader service.');
+        } elseif ($mode === 'live') {
+            Logger::log('Live mode selected without a real reader implementation; falling back to the mock reader service.');
         }
 
         return new MockReaderService($settings);

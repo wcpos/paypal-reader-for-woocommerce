@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: PayPal Reader for WooCommerce
- * Description: Adds mock-first PayPal Reader support to WooCommerce for in-person payments.
+ * Description: Accept in-person card payments in WooCommerce using a PayPal Reader (Zettle).
  * Version:     0.0.1
  * Author:      kilbot
  * Author URI:  https://kilbot.com/

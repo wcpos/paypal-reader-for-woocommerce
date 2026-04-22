@@ -16,7 +16,7 @@ class Gateway extends \WC_Payment_Gateway {
     public function __construct() {
         $this->id                 = 'paypal_reader_for_woocommerce';
         $this->method_title       = __('PayPal Reader', 'paypal-reader-for-woocommerce');
-        $this->method_description = __('Accept in-person payments using a mock-first PayPal Reader workflow.', 'paypal-reader-for-woocommerce');
+        $this->method_description = __('Accept in-person card payments using a PayPal Reader. Use Test mode while you verify your setup, then disable it to go live.', 'paypal-reader-for-woocommerce');
         $this->has_fields         = true;
 
         $this->init_form_fields();
@@ -27,6 +27,29 @@ class Gateway extends \WC_Payment_Gateway {
 
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, [$this, 'process_admin_options']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_payment_scripts']);
+        add_action('admin_notices', [$this, 'maybe_render_mock_reader_notice']);
+    }
+
+    /**
+     * Warn admins when the CI-only mock reader path is active (via the
+     * PRWC_USE_MOCK_READER constant or filter). This catches the common
+     * foot-gun of leaving the constant defined when promoting wp-config from
+     * a dev/CI environment to staging or production.
+     */
+    public function maybe_render_mock_reader_notice(): void {
+        if (!Settings::use_mock_reader()) {
+            return;
+        }
+
+        if (function_exists('current_user_can') && !current_user_can('manage_woocommerce')) {
+            return;
+        }
+
+        echo '<div class="notice notice-warning"><p><strong>'
+            . esc_html__('PayPal Reader: mock reader is active.', 'paypal-reader-for-woocommerce')
+            . '</strong> '
+            . esc_html__('PRWC_USE_MOCK_READER is defined in wp-config.php, so no real reader payments will be processed. Remove that constant before going live.', 'paypal-reader-for-woocommerce')
+            . '</p></div>';
     }
 
     public static function register_gateway(array $methods): array {
@@ -52,46 +75,31 @@ class Gateway extends \WC_Payment_Gateway {
                 'type' => 'textarea',
                 'default' => __('Pay in person using PayPal Reader.', 'paypal-reader-for-woocommerce'),
             ],
-            'mode' => [
-                'title' => __('Mode', 'paypal-reader-for-woocommerce'),
-                'type' => 'select',
-                'default' => 'mock',
-                'options' => [
-                    'mock' => __('Mock mode', 'paypal-reader-for-woocommerce'),
-                    'live' => __('Live mode (credentials required)', 'paypal-reader-for-woocommerce'),
-                ],
-                'description' => __('Mock mode is the primary testing path for this plugin when no real reader is available.', 'paypal-reader-for-woocommerce'),
+            'test_mode' => [
+                'title' => __('Test mode', 'paypal-reader-for-woocommerce'),
+                'type' => 'checkbox',
+                'label' => __('Enable Test mode', 'paypal-reader-for-woocommerce'),
+                'default' => 'yes',
+                'description' => __('In Test mode, payments run against your Zettle developer / test merchant account. Disable to go live. Note: this plugin is pre-release — real Zettle API calls are not wired up yet, so Test mode currently drives an in-memory simulation.', 'paypal-reader-for-woocommerce'),
             ],
             'client_id' => [
                 'title' => __('Zettle Client ID', 'paypal-reader-for-woocommerce'),
                 'type' => 'text',
                 'default' => '',
+                'description' => __('Your Zettle OAuth client ID. Use your test merchant credentials while Test mode is enabled.', 'paypal-reader-for-woocommerce'),
             ],
             'assertion' => [
                 'title' => __('Zettle Assertion', 'paypal-reader-for-woocommerce'),
                 'type' => 'password',
                 'default' => '',
-            ],
-            'mock_reader_name' => [
-                'title' => __('Mock Reader Name', 'paypal-reader-for-woocommerce'),
-                'type' => 'text',
-                'default' => 'WCPOS Mock Reader',
-            ],
-            'mock_cancel_behavior' => [
-                'title' => __('Mock Cancel Behaviour', 'paypal-reader-for-woocommerce'),
-                'type' => 'select',
-                'default' => 'canceled',
-                'options' => [
-                    'canceled' => __('Cancel succeeds', 'paypal-reader-for-woocommerce'),
-                    'too_late' => __('Cancel is too late and payment still completes', 'paypal-reader-for-woocommerce'),
-                ],
+                'description' => __('Your Zettle OAuth assertion (JWT). Use your test merchant credentials while Test mode is enabled.', 'paypal-reader-for-woocommerce'),
             ],
         ];
     }
 
     public function payment_fields(): void {
         echo '<div class="paypal-reader-terminal" data-gateway="paypal_reader_for_woocommerce">';
-        echo '<p>' . esc_html__('Connect a reader, start the payment, and wait for the mock PayPal Reader result before placing the order.', 'paypal-reader-for-woocommerce') . '</p>';
+        echo '<p>' . esc_html__('Connect a reader, start the payment, and wait for the PayPal Reader result before placing the order.', 'paypal-reader-for-woocommerce') . '</p>';
         echo '<div class="paypal-reader-terminal__status" aria-live="polite"></div>';
         echo '<div class="paypal-reader-terminal__readers"></div>';
         echo '<div class="paypal-reader-terminal__actions">';
@@ -183,13 +191,8 @@ class Gateway extends \WC_Payment_Gateway {
     }
 
     public function is_available(): bool {
-        $settings = Settings::get_gateway_settings();
-        $mode = Settings::get_mode($settings);
-
-        if ($mode === 'mock') {
-            return parent::is_available();
-        }
-
-        return parent::is_available() && !empty($settings['client_id']) && !empty($settings['assertion']);
+        // Settings::get_mode() already enforces credential presence before
+        // returning 'live', so we do not re-check credentials here.
+        return parent::is_available();
     }
 }
