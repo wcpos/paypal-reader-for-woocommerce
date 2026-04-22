@@ -59,6 +59,7 @@ echo "Fetching order-pay page: $ORDER_PAY_URL"
 PAGE_HTML=$(curl -fsSL "$ORDER_PAY_URL")
 [[ "$PAGE_HTML" == *paypal-reader-terminal* ]]
 [[ "$PAGE_HTML" == *paypalReaderData* ]]
+[[ "$PAGE_HTML" == *"${BASE_URL}/wp-content/plugins/paypal-reader-for-woocommerce/assets/js/payment.js"* ]]
 
 PAYPAL_READER_JSON=$(printf '%s' "$PAGE_HTML" | python3 -c 'import re, sys; html=sys.stdin.read(); m=re.search(r"var paypalReaderData = (\{.*?\});", html, re.S); print(m.group(1) if m else "")')
 if [ -z "$PAYPAL_READER_JSON" ]; then
