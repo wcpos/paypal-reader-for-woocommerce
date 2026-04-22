@@ -5,8 +5,9 @@
 
 ## Why
 - Local implementation is complete in this workspace.
+- Official docs and GitHub examples were distilled into a disposable mock simulator and exercised by automated tests.
 - No live auth, link, session, status, payment, cancellation, or reconciliation evidence was captured here.
-- Local implementation alone is not sufficient to mark the milestone complete.
+- Mock validation reduces uncertainty but is still not sufficient to mark the milestone complete.
 
 ## Required to flip to GO
 - Live auth/link/session/status verification.
@@ -15,4 +16,4 @@
 - Reconciliation/browser-drop evidence tied to the live run.
 
 ## Current status
-This evidence pack reflects the present offline state only. The missing live proof remains the blocker to a GO decision.
+This evidence pack reflects a doc-driven mock-validated offline state only. The missing live proof remains the blocker to a GO decision.

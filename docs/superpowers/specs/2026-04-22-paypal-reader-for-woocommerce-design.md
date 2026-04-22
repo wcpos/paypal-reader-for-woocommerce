@@ -1,7 +1,7 @@
 # PayPal Reader for WooCommerce / WCPOS
 ## M1 Discovery Brief and Provisional v1 Design
 
-- **Status:** M1 NO-GO recorded (offline session; live proof still missing)
+- **Status:** M1 NO-GO recorded (doc/GitHub-informed mock validation complete; live proof still missing)
 - **Date:** April 22, 2026
 - **Author:** OpenAI Codex
 - **Target org:** `wcpos`
@@ -102,7 +102,10 @@ A standalone plugin is preferred over extending the existing Stripe or SumUp rep
 
 This session used official Zettle / PayPal Reader Connect documentation as the source-backed input for the M1 spike, but it did **not** include live merchant credentials or live reader execution. The local spike implementation and evidence scaffolding were completed in this workspace; the live dependency checks remain outstanding.
 
-### Official references reviewed
+### References reviewed
+- Stylora Reader Connect service (secondary pattern reference only, not authoritative)
+  https://github.com/Tamerb86/stylora/blob/main/server/services/reader-connect.ts
+
 - Reader Connect reference  
   https://developer.zettle.com/docs/payment-integrations/reader-connect/reference
 - Reader Connect make payments  
@@ -131,33 +134,35 @@ This session used official Zettle / PayPal Reader Connect documentation as the s
 - Reader Connect docs describe payment/result identifiers such as `internalTraceId`, `CARD_PAYMENT_UUID`, `trackingId`, and `checkoutUUID`; in this session those remain documented lookup candidates only, not proven verification references.
 
 ### Session limit that controls this spec
-No live `ZETTLE_*` credentials were available here, so no live auth, link, session, status, payment, cancel, or reconciliation checks were executed. The design therefore stops at the M1 gate with a documented **NO-GO** for this session.
+No live `ZETTLE_*` credentials or hardware were available here, so no live auth, link, session, status, payment, cancel, or reconciliation checks were executed. Instead, this session used official docs plus GitHub examples to build a disposable mock OAuth/Reader Connect simulator and run contract tests against it. The design therefore still stops at the M1 gate with a documented **NO-GO** for live implementation work.
 
 ---
 
 ## 7. M1 discovery spike
 
 ## 7.1 What this session completed
-This workspace now contains the local M1 spike implementation and evidence scaffolding needed to run the discovery flow later with live credentials and hardware. That includes the disposable scripts, harness code, markdown evidence templates, and the evidence-pack writer intended to capture auth, link, session, status, payment, cancellation, and reconciliation observations.
+This workspace now contains the local M1 spike implementation, evidence scaffolding, and a doc-driven mock simulator for the Reader Connect flow. That includes the disposable scripts, harness code, markdown evidence templates, a mock OAuth/Reader Connect server, and transcript tests for status, payment success, and ambiguous cancellation behavior.
 
 ## 7.2 What this session did not complete
-This session did **not** have live `ZETTLE_*` credentials, so it did **not** execute any live auth, link claim/reuse, session creation, WebSocket status, payment, cancel, or browser-drop reconciliation checks. No live reader transcript was captured here.
+This session did **not** have live `ZETTLE_*` credentials or a physical reader, so it did **not** execute any live auth, link claim/reuse, session creation, WebSocket status, payment, cancel, or browser-drop reconciliation checks. No live reader transcript was captured here.
 
 ## 7.3 Actual M1 outcome for this session
-The spike answered the local implementation question, but it did **not** satisfy the M1 proof requirement. Because the live evidence was still missing at the end of the session, M1 ended here at the gate with **NO-GO** and M2 must not start from this session alone.
+The spike answered the local implementation question more deeply than before by validating request/response shapes against a disposable mock contract. It still did **not** satisfy the M1 proof requirement. Because the live evidence was still missing at the end of the session, M1 ended here at the gate with **NO-GO** and M2 must not start from this session alone.
 
 ## 7.4 Outputs now present
 The following outputs exist after this session:
 
 1. local spike code for the documented auth/link/session/payment investigation path
-2. evidence-pack scaffolding for auth, scopes, payment run, reconciliation, and go/no-go recording
-3. a written record that live proof is still missing
-4. an updated design spec that converts the session findings into explicit stop/go language
+2. evidence-pack scaffolding for auth, scopes, mock validation, payment run, reconciliation, and go/no-go recording
+3. a disposable mock OAuth/Reader Connect simulator with contract tests
+4. a written record that live proof is still missing
+5. an updated design spec that converts the session findings into explicit stop/go language
 
 ### Evidence-pack inventory from this session
 Present now:
 - `paypal-reader-for-woocommerce-m1-spike/evidence/m1/scopes.md`
 - `paypal-reader-for-woocommerce-m1-spike/evidence/m1/auth-decision.md`
+- `paypal-reader-for-woocommerce-m1-spike/evidence/m1/mock-validation.md`
 - `paypal-reader-for-woocommerce-m1-spike/evidence/m1/payment-run-001.md`
 - `paypal-reader-for-woocommerce-m1-spike/evidence/m1/reconciliation-browser-drop.md`
 - `paypal-reader-for-woocommerce-m1-spike/evidence/m1/go-no-go.md`
@@ -184,7 +189,7 @@ The following M1 outputs remain unresolved and must be produced by a later live 
 7. at least one successful live payment transcript tied to verification evidence
 
 ## 7.6 Hard gate status
-The M1 hard gate remains closed. This session proved the workspace is prepared for live testing, not that the PayPal Reader / Zettle integration path is production-viable.
+The M1 hard gate remains closed. This session proved the workspace is prepared for both live testing later and meaningful no-hardware contract validation now, but not that the PayPal Reader / Zettle integration path is production-viable.
 
 ---
 

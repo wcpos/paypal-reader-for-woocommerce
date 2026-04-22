@@ -18,6 +18,8 @@ export function buildPaymentRequestMessage({
   expiresAt,
   internalTraceId,
   amount,
+  tippingType = 'NONE',
+  partnerAttributionId,
 }) {
   return {
     type: 'MESSAGE',
@@ -29,13 +31,14 @@ export function buildPaymentRequestMessage({
       accessToken,
       expiresAt,
       internalTraceId,
-      amount,
-      tippingType: 'NONE',
+      amount: String(amount),
+      tippingType,
+      ...(partnerAttributionId ? { partnerAttributionId } : {}),
     },
   };
 }
 
-export function buildCancelPaymentMessage({ linkId, channelId, messageId }) {
+export function buildCancelPaymentMessage({ linkId, channelId, messageId, internalTraceId }) {
   return {
     type: 'MESSAGE',
     linkId,
@@ -43,6 +46,7 @@ export function buildCancelPaymentMessage({ linkId, channelId, messageId }) {
     messageId,
     payload: {
       type: 'CANCEL_PAYMENT_REQUEST',
+      internalTraceId,
     },
   };
 }

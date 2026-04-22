@@ -21,7 +21,7 @@ test('buildStatusRequestMessage creates a STATUS_REQUEST envelope', () => {
   );
 });
 
-test('buildPaymentRequestMessage uses the server-owned internalTraceId', () => {
+test('buildPaymentRequestMessage follows the Reader Connect payload shape from the docs', () => {
   assert.deepEqual(
     buildPaymentRequestMessage({
       linkId: 'link-123',
@@ -42,16 +42,21 @@ test('buildPaymentRequestMessage uses the server-owned internalTraceId', () => {
         accessToken: 'token-123',
         expiresAt: 1700000000000,
         internalTraceId: 'attempt-123',
-        amount: 100,
+        amount: '100',
         tippingType: 'NONE',
       },
     }
   );
 });
 
-test('buildCancelPaymentMessage creates a cancel envelope', () => {
+test('buildCancelPaymentMessage includes the payment internalTraceId', () => {
   assert.deepEqual(
-    buildCancelPaymentMessage({ linkId: 'link-123', channelId: 'wcpos-m1', messageId: 'msg-3' }),
+    buildCancelPaymentMessage({
+      linkId: 'link-123',
+      channelId: 'wcpos-m1',
+      messageId: 'msg-3',
+      internalTraceId: 'attempt-123',
+    }),
     {
       type: 'MESSAGE',
       linkId: 'link-123',
@@ -59,6 +64,7 @@ test('buildCancelPaymentMessage creates a cancel envelope', () => {
       messageId: 'msg-3',
       payload: {
         type: 'CANCEL_PAYMENT_REQUEST',
+        internalTraceId: 'attempt-123',
       },
     }
   );

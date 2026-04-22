@@ -4,10 +4,11 @@
 - Provisional NO-GO.
 
 ## Basis for the decision
-- Local implementation is complete in this workspace.
-- This session did not execute live authentication against the reader environment.
-- Link claim, session configuration, and status verification were also not executed here.
-- Payment verification was not executed in this session.
+- Official docs still make self-hosted assertion grant the leading candidate for a private merchant-installed integration.
+- This session mock-validated the assertion grant request shape and response envelope in the disposable spike workspace.
+- This session did not execute live authentication against the Zettle environment.
+- Link claim, session configuration, and status verification were also not executed live here.
+- Payment verification was not executed live in this session.
 - Without live observations, the auth path cannot be treated as proven.
 
 ## Evidence required to revisit

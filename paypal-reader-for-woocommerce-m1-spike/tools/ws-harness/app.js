@@ -72,6 +72,7 @@ document.querySelector('#cancel').addEventListener('click', () => {
     linkId: field('linkId'),
     channelId: field('channelId'),
     messageId: messageId(),
+    internalTraceId: field('attemptId'),
   });
   sendMessage('CANCEL', payload);
 });

@@ -10,7 +10,7 @@ This directory is disposable. It exists only to prove the M1 gates from the desi
 - Do not start the production plugin repo from this workspace.
 
 ## Commands
-- `npm test`
+- `npm test` — runs the unit tests, including the disposable doc-driven mock OAuth/Reader Connect transcript checks
 - `npm run get-token`
 - `npm run list-links`
 - `npm run claim-link`
