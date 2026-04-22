@@ -16,3 +16,10 @@ This directory is disposable. It exists only to prove the M1 gates from the desi
 - `npm run claim-link`
 - `npm run configure-session`
 - `npm run write-evidence-pack`
+
+## Browser WebSocket harness
+
+Run a local static server from the spike root:
+- `python3 -m http.server 4173`
+
+Then open `http://localhost:4173/tools/ws-harness/` and paste the `location`, `linkId`, `channelId`, token, expiry, attempt ID, and amount from the live spike commands.
