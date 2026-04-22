@@ -7,6 +7,9 @@ on:
       - m1-discovery
   pull_request:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   php-and-js:
     runs-on: ubuntu-latest
