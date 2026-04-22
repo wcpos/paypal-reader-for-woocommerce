@@ -70,6 +70,13 @@ jobs:
         if: always()
         run: docker compose -f e2e/docker-compose.yml down -v
 
+      - name: Run tampered-amount smoke test
+        run: PRWC_SMOKE_SCENARIO=complete PRWC_MOCK_CANCEL_BEHAVIOR=canceled PRWC_SUBMITTED_AMOUNT_MINOR=1 ./e2e/smoke-test.sh
+
+      - name: Reset containers after tampered-amount smoke test
+        if: always()
+        run: docker compose -f e2e/docker-compose.yml down -v
+
       - name: Run cancel-path smoke test
         run: PRWC_SMOKE_SCENARIO=cancel PRWC_MOCK_CANCEL_BEHAVIOR=canceled ./e2e/smoke-test.sh
 

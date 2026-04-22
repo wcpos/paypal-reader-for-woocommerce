@@ -47,7 +47,7 @@ class AjaxHandler {
         }
 
         $reader_id = isset($_POST['reader_id']) ? sanitize_text_field(wp_unslash($_POST['reader_id'])) : 'mock-reader-1';
-        $amount = isset($_POST['amount']) ? absint($_POST['amount']) : (int) round(((float) $order->get_total()) * 100);
+        $amount = (int) round(((float) $order->get_total()) * 100);
 
         $attempt = $this->get_workflow_service()->start_payment([
             'order_id' => $order->get_id(),

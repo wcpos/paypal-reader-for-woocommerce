@@ -7,6 +7,7 @@ BASE_URL="http://localhost:8091"
 SCENARIO=${PRWC_SMOKE_SCENARIO:-complete}
 MOCK_CANCEL_BEHAVIOR=${PRWC_MOCK_CANCEL_BEHAVIOR:-canceled}
 PLUGIN_INSTALL_MODE=${PRWC_PLUGIN_INSTALL_MODE:-source}
+SUBMITTED_AMOUNT_MINOR=${PRWC_SUBMITTED_AMOUNT_MINOR:-}
 
 cleanup() {
   local code=$?
@@ -61,6 +62,7 @@ echo "$ORDER_JSON"
 ORDER_ID=$(printf '%s' "$ORDER_JSON" | python3 -c 'import sys, json; print(json.load(sys.stdin)["order_id"])')
 ORDER_KEY=$(printf '%s' "$ORDER_JSON" | python3 -c 'import sys, json; print(json.load(sys.stdin)["order_key"])')
 ORDER_TOTAL_MINOR=$(printf '%s' "$ORDER_JSON" | python3 -c 'import sys, json; print(json.load(sys.stdin)["total_minor"])')
+REQUEST_AMOUNT_MINOR=${SUBMITTED_AMOUNT_MINOR:-$ORDER_TOTAL_MINOR}
 ORDER_PAY_URL="$BASE_URL/checkout/order-pay/$ORDER_ID/?pay_for_order=true&key=$ORDER_KEY"
 
 echo "Fetching order-pay page: $ORDER_PAY_URL"
@@ -94,7 +96,7 @@ START_JSON=$(curl -fsSL -X POST "$AJAX_URL" \
   --data-urlencode "order_id=$ORDER_ID" \
   --data-urlencode "order_key=$ORDER_KEY" \
   --data-urlencode "reader_id=$READER_ID" \
-  --data-urlencode "amount=$ORDER_TOTAL_MINOR")
+  --data-urlencode "amount=$REQUEST_AMOUNT_MINOR")
 printf '%s' "$START_JSON" | python3 -c 'import sys, json; data=json.load(sys.stdin); assert data["success"] is True; assert data["data"]["state"] == "pending"; print(data["data"]["attempt_id"])' >/tmp/paypal-reader-attempt.txt
 ATTEMPT_ID=$(cat /tmp/paypal-reader-attempt.txt)
 echo "Started attempt: $ATTEMPT_ID"
@@ -133,6 +135,7 @@ case "$SCENARIO" in
       echo "Payment never reached completed state" >&2
       exit 1
     fi
+    printf '%s' "$STATUS_JSON" | ORDER_TOTAL_MINOR="$ORDER_TOTAL_MINOR" python3 -c 'import os, sys, json; data=json.load(sys.stdin); payload=data["data"]["result"]["resultPayload"]; assert payload["amount"] == os.environ["ORDER_TOTAL_MINOR"]; print("Server-authoritative amount verified")'
     ;;
   cancel)
     if [ "$FINAL_STATE" != "canceled" ]; then

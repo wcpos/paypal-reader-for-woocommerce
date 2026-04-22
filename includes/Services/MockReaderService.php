@@ -119,6 +119,14 @@ class MockReaderService {
             throw new \RuntimeException('Unknown mock payment attempt: ' . $attempt_id);
         }
 
+        if (($attempt['state'] ?? '') === 'completed') {
+            return [
+                'attempt_id' => $attempt['attempt_id'],
+                'cancel_behavior' => 'too_late',
+                'state' => $attempt['state'],
+            ];
+        }
+
         if ($attempt['cancel_behavior'] === 'canceled') {
             $attempt['state'] = 'canceled';
             $attempt['result'] = [

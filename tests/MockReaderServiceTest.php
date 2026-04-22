@@ -59,4 +59,26 @@ return [
         assert_same('completed', $final['state']);
         assert_same('COMPLETED', $final['result']['resultStatus']);
     },
+    'does not downgrade a completed payment when cancel is retried after completion' => function (): void {
+        $service = new MockReaderService([
+            'mock_cancel_behavior' => 'canceled',
+        ]);
+
+        $attempt = $service->create_payment([
+            'order_id' => 303,
+            'amount' => 1444,
+            'currency' => 'USD',
+            'reader_id' => 'mock-reader-1',
+        ]);
+
+        $final = $service->advance_payment($attempt['attempt_id'], 99);
+        $cancel = $service->cancel_payment($attempt['attempt_id']);
+        $stored = $service->get_attempt($attempt['attempt_id']);
+
+        assert_same('completed', $final['state']);
+        assert_same('too_late', $cancel['cancel_behavior']);
+        assert_same('completed', $cancel['state']);
+        assert_same('completed', $stored['state']);
+        assert_same('COMPLETED', $stored['result']['resultStatus']);
+    },
 ];
