@@ -3,6 +3,8 @@ set -eu
 
 cd /var/www/html
 
+MOCK_CANCEL_BEHAVIOR=${PRWC_MOCK_CANCEL_BEHAVIOR:-canceled}
+
 echo "Waiting for WordPress files to be ready..."
 until wp core version --path=/var/www/html >/dev/null 2>&1; do
   sleep 2
@@ -41,7 +43,7 @@ wp option update woocommerce_currency "USD" --path=/var/www/html
 wp rewrite structure '/%postname%/' --hard --path=/var/www/html
 wp rewrite flush --hard --path=/var/www/html
 wp option update woocommerce_paypal_reader_for_woocommerce_settings \
-  '{"enabled":"yes","title":"PayPal Reader","description":"Pay in person using PayPal Reader.","mode":"mock","mock_reader_name":"WCPOS Mock Reader","mock_cancel_behavior":"canceled"}' \
+  '{"enabled":"yes","title":"PayPal Reader","description":"Pay in person using PayPal Reader.","mode":"mock","mock_reader_name":"WCPOS Mock Reader","mock_cancel_behavior":"'"${MOCK_CANCEL_BEHAVIOR}"'"}' \
   --format=json --path=/var/www/html
 
 PRODUCT_ID=$(wp post list --post_type=product --post_status=publish --format=ids --path=/var/www/html | awk '{print $1}')

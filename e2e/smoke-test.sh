@@ -4,6 +4,8 @@ set -euo pipefail
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 COMPOSE=(docker compose -f "$SCRIPT_DIR/docker-compose.yml")
 BASE_URL="http://localhost:8091"
+SCENARIO=${PRWC_SMOKE_SCENARIO:-complete}
+MOCK_CANCEL_BEHAVIOR=${PRWC_MOCK_CANCEL_BEHAVIOR:-canceled}
 
 cleanup() {
   local code=$?
@@ -15,11 +17,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "Starting Docker environment..."
+echo "Starting Docker environment for scenario: $SCENARIO (cancel behavior: $MOCK_CANCEL_BEHAVIOR)"
 "${COMPOSE[@]}" up -d db wordpress
 
 echo "Running WordPress setup..."
-"${COMPOSE[@]}" run --rm wp-cli >/tmp/paypal-reader-e2e-setup.log
+PRWC_MOCK_CANCEL_BEHAVIOR="$MOCK_CANCEL_BEHAVIOR" "${COMPOSE[@]}" run --rm -e PRWC_MOCK_CANCEL_BEHAVIOR="$MOCK_CANCEL_BEHAVIOR" wp-cli >/tmp/paypal-reader-e2e-setup.log
 cat /tmp/paypal-reader-e2e-setup.log
 
 echo "Creating a fresh pending WooCommerce order..."
@@ -91,6 +93,19 @@ printf '%s' "$START_JSON" | python3 -c 'import sys, json; data=json.load(sys.std
 ATTEMPT_ID=$(cat /tmp/paypal-reader-attempt.txt)
 echo "Started attempt: $ATTEMPT_ID"
 
+if [ "$SCENARIO" = "cancel" ] || [ "$SCENARIO" = "too-late-cancel" ]; then
+  echo "Sending cancel request..."
+  CANCEL_JSON=$(curl -fsSL -X POST "$AJAX_URL" \
+    --data-urlencode "action=paypal_reader_cancel_payment" \
+    --data-urlencode "nonce=$NONCE" \
+    --data-urlencode "order_id=$ORDER_ID" \
+    --data-urlencode "order_key=$ORDER_KEY")
+  echo "$CANCEL_JSON"
+  printf '%s' "$CANCEL_JSON" | python3 -c 'import sys, json; data=json.load(sys.stdin); assert data["success"] is True; print(data["data"].get("cancel_behavior", ""))' >/tmp/paypal-reader-cancel-behavior.txt
+  CANCEL_RESULT=$(cat /tmp/paypal-reader-cancel-behavior.txt)
+  echo "Cancel behavior reported by plugin: $CANCEL_RESULT"
+fi
+
 FINAL_STATE="pending"
 for _ in 1 2 3 4 5 6 7 8 9 10; do
   STATUS_JSON=$(curl -fsSL -X POST "$AJAX_URL" \
@@ -100,16 +115,36 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
     --data-urlencode "order_key=$ORDER_KEY")
   FINAL_STATE=$(printf '%s' "$STATUS_JSON" | python3 -c 'import sys, json; data=json.load(sys.stdin); assert data["success"] is True; print(data["data"]["state"])')
   echo "Payment state: $FINAL_STATE"
-  if [ "$FINAL_STATE" = "completed" ]; then
+  if [ "$FINAL_STATE" = "completed" ] || [ "$FINAL_STATE" = "canceled" ]; then
     break
   fi
   sleep 1
 done
 
-if [ "$FINAL_STATE" != "completed" ]; then
-  echo "Payment never reached completed state" >&2
-  exit 1
-fi
+case "$SCENARIO" in
+  complete)
+    if [ "$FINAL_STATE" != "completed" ]; then
+      echo "Payment never reached completed state" >&2
+      exit 1
+    fi
+    ;;
+  cancel)
+    if [ "$FINAL_STATE" != "canceled" ]; then
+      echo "Payment never reached canceled state" >&2
+      exit 1
+    fi
+    ;;
+  too-late-cancel)
+    if [ "$FINAL_STATE" != "completed" ]; then
+      echo "Payment did not complete after too-late cancel" >&2
+      exit 1
+    fi
+    ;;
+  *)
+    echo "Unknown scenario: $SCENARIO" >&2
+    exit 1
+    ;;
+esac
 
 echo "Running gateway process_payment inside WordPress..."
 PROCESS_JSON=$("${COMPOSE[@]}" run --rm -e PRWC_ORDER_ID="$ORDER_ID" --entrypoint wp wp-cli eval '
@@ -126,6 +161,14 @@ echo wp_json_encode(array(
 ' --path=/var/www/html)
 
 echo "$PROCESS_JSON"
-printf '%s' "$PROCESS_JSON" | python3 -c 'import sys, json; data=json.load(sys.stdin); assert data["result"]["result"] == "success"; assert data["payment_state"] == "completed"; assert data["transaction_id"] == "mock-card-payment-uuid"; assert data["order_status"] in ("processing", "completed"); print("Gateway processing verified")'
+
+case "$SCENARIO" in
+  complete|too-late-cancel)
+    printf '%s' "$PROCESS_JSON" | python3 -c 'import sys, json; data=json.load(sys.stdin); assert data["result"]["result"] == "success"; assert data["payment_state"] == "completed"; assert data["transaction_id"] == "mock-card-payment-uuid"; assert data["order_status"] in ("processing", "completed"); print("Gateway processing verified")'
+    ;;
+  cancel)
+    printf '%s' "$PROCESS_JSON" | python3 -c 'import sys, json; data=json.load(sys.stdin); assert data["result"]["result"] == "failure"; assert data["payment_state"] == "canceled"; print("Gateway cancel-path verification verified")'
+    ;;
+esac
 
 echo "Smoke test completed successfully."

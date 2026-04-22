@@ -22,6 +22,13 @@ A Docker-based smoke environment is included in `e2e/`.
 ./e2e/smoke-test.sh
 ```
 
+Additional scenarios:
+
+```bash
+PRWC_SMOKE_SCENARIO=cancel PRWC_MOCK_CANCEL_BEHAVIOR=canceled ./e2e/smoke-test.sh
+PRWC_SMOKE_SCENARIO=too-late-cancel PRWC_MOCK_CANCEL_BEHAVIOR=too_late ./e2e/smoke-test.sh
+```
+
 This will:
 - start WordPress + MariaDB
 - install WooCommerce
