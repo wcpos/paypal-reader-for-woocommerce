@@ -4,7 +4,8 @@ This directory is disposable. It exists only to prove the M1 gates from the desi
 
 ## Rules
 - Do not commit real credentials.
-- Copy `.env.example` to `.env` and fill in merchant-specific values locally.
+- Copy `.env.example` to `.env` if you want a local template, but export the variables into your shell before running the scripts.
+- The scripts read exported environment variables only; for example, `set -a; source .env; set +a` in `zsh` will export the values from a `.env` file for the current shell.
 - Write all durable findings into `evidence/m1/`.
 - Do not start the production plugin repo from this workspace.
 
