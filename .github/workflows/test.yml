@@ -1,0 +1,99 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+      - m1-discovery
+  pull_request:
+
+jobs:
+  php-and-js:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Run repository PHP tests
+        run: php tests/run.php
+
+      - name: Lint PHP files
+        run: find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
+
+      - name: Check frontend JavaScript syntax
+        run: node --check assets/js/payment.js
+
+      - name: Build installable plugin zip
+        run: ./scripts/build-plugin-zip.sh
+
+      - name: Validate packaged plugin contents
+        run: |
+          VERSION=$(grep -oE 'Version:[[:space:]]*[0-9]+(\.[0-9]+)*' paypal-reader-for-woocommerce.php | head -1 | grep -oE '[0-9]+(\.[0-9]+)*')
+          ZIP_PATH="dist/paypal-reader-for-woocommerce-${VERSION}.zip"
+          unzip -l "$ZIP_PATH"
+          if unzip -l "$ZIP_PATH" | grep -Eq 'paypal-reader-for-woocommerce/(tests|e2e|docs|paypal-reader-for-woocommerce-m1-spike)/'; then
+            echo "Packaged zip contains non-runtime files"
+            exit 1
+          fi
+
+      - name: Run M1 spike tests
+        working-directory: paypal-reader-for-woocommerce-m1-spike
+        run: npm test
+
+      - name: Regenerate M1 evidence pack
+        working-directory: paypal-reader-for-woocommerce-m1-spike
+        run: npm run write-evidence-pack
+
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Build installable plugin zip
+        run: ./scripts/build-plugin-zip.sh
+
+      - name: Run complete-path smoke test
+        run: PRWC_SMOKE_SCENARIO=complete PRWC_MOCK_CANCEL_BEHAVIOR=canceled ./e2e/smoke-test.sh
+
+      - name: Reset containers after complete-path smoke test
+        if: always()
+        run: docker compose -f e2e/docker-compose.yml down -v
+
+      - name: Run tampered-amount smoke test
+        run: PRWC_SMOKE_SCENARIO=complete PRWC_MOCK_CANCEL_BEHAVIOR=canceled PRWC_SUBMITTED_AMOUNT_MINOR=1 ./e2e/smoke-test.sh
+
+      - name: Reset containers after tampered-amount smoke test
+        if: always()
+        run: docker compose -f e2e/docker-compose.yml down -v
+
+      - name: Run cancel-path smoke test
+        run: PRWC_SMOKE_SCENARIO=cancel PRWC_MOCK_CANCEL_BEHAVIOR=canceled ./e2e/smoke-test.sh
+
+      - name: Reset containers after cancel-path smoke test
+        if: always()
+        run: docker compose -f e2e/docker-compose.yml down -v
+
+      - name: Run too-late-cancel smoke test
+        run: PRWC_SMOKE_SCENARIO=too-late-cancel PRWC_MOCK_CANCEL_BEHAVIOR=too_late ./e2e/smoke-test.sh
+
+      - name: Reset containers after too-late-cancel smoke test
+        if: always()
+        run: docker compose -f e2e/docker-compose.yml down -v
+
+      - name: Run zip-install smoke test
+        run: PRWC_PLUGIN_INSTALL_MODE=zip PRWC_SMOKE_SCENARIO=complete PRWC_MOCK_CANCEL_BEHAVIOR=canceled ./e2e/smoke-test.sh
+
+      - name: Reset containers after zip-install smoke test
+        if: always()
+        run: docker compose -f e2e/docker-compose.yml down -v

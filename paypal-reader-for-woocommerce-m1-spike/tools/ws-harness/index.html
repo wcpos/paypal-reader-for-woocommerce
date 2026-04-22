@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>PayPal Reader M1 WebSocket Harness</title>
+  </head>
+  <body>
+    <h1>PayPal Reader M1 WebSocket Harness</h1>
+    <form id="controls">
+      <input id="location" placeholder="WebSocket location" size="80" />
+      <input id="linkId" placeholder="linkId" />
+      <input id="channelId" placeholder="channelId" />
+      <input id="accessToken" placeholder="short-lived access token" size="60" />
+      <input id="expiresAt" placeholder="expiresAt" />
+      <input id="attemptId" placeholder="internalTraceId / attemptId" />
+      <input id="amount" placeholder="amount in minor units" />
+      <button type="button" id="connect">Connect</button>
+      <button type="button" id="status">Send status</button>
+      <button type="button" id="payment">Send payment</button>
+      <button type="button" id="cancel">Send cancel</button>
+    </form>
+    <pre id="log"></pre>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
