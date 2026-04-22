@@ -2,14 +2,29 @@
 
 PayPal Reader integration for WooCommerce / WCPOS.
 
-## Testing the gateway
+## Setup
 
 1. Install and activate the plugin in WordPress with WooCommerce.
 2. Go to `WooCommerce > Settings > Payments > PayPal Reader`.
-3. Leave **Test mode** enabled and enter your Zettle developer / test merchant credentials.
-4. Use the gateway on an `order-pay` checkout flow and complete the reader flow.
+3. Enable the gateway, leave **Test mode** on, and enter your Zettle **Client ID** and **Assertion** (JWT) from the Zettle Developer Portal.
+4. Save, then scroll to **Paired readers** at the bottom of the settings screen.
 
-To go live, disable **Test mode** and swap in your production Zettle credentials.
+## Pairing a reader
+
+1. On the PayPal Reader device, open `Settings → Link with a developer` to show the pairing code.
+2. In **Paired readers → Pair a new reader**, enter the code and (optionally) a human-readable name.
+3. Click **Pair reader**. The reader appears in the paired list and is ready to take payments.
+4. Use **Unpair** to remove a reader you no longer want to use.
+
+## Taking a payment
+
+1. Go to an order-pay checkout URL (e.g. `?pay_for_order=true&key=…`).
+2. Select a paired reader.
+3. Click **Start reader payment**. The browser opens a WebSocket session to the reader and streams payment progress.
+4. Tap/insert the card on the reader. When the reader reports `COMPLETED`, the server verifies the amount against the order total, records the Zettle `CARD_PAYMENT_UUID`, and the order is placed automatically.
+5. **Cancel payment** sends a cancel request to the reader over the same WebSocket.
+
+To go live, disable **Test mode** and swap your Zettle test merchant credentials for production ones. The endpoints and flow are identical — only the merchant account differs.
 
 ### CI / automated testing (mock reader)
 
@@ -72,5 +87,6 @@ This writes both:
 
 ## Notes
 
-- Live Zettle credentials are optional and currently fall back to the built-in mock flow.
-- The repository still contains the `paypal-reader-for-woocommerce-m1-spike` discovery workspace for protocol research.
+- Live payments go directly to Zettle's Reader Connect API (`reader-connect.zettle.com/v1/integrator`) over REST + WebSocket. The PHP side brokers pairing, opens the session, and confirms the final result; the browser drives the WebSocket.
+- OAuth tokens are cached in a WP transient keyed by the configured client ID (TTL = Zettle `expires_in` minus a 30s grace window).
+- The plugin never trusts the browser's reported amount: `confirm_payment` rejects results whose amount does not match the order total.
