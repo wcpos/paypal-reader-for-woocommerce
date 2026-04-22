@@ -1,0 +1,49 @@
+.paypal-reader-pairing {
+  margin-top: 1em;
+}
+
+.paypal-reader-pairing__table {
+  margin-bottom: 1em;
+}
+
+.paypal-reader-pairing__table code {
+  font-size: 12px;
+}
+
+.paypal-reader-pairing__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75em;
+  align-items: center;
+  margin: 0.5em 0;
+}
+
+.paypal-reader-pairing__form label {
+  display: inline-flex;
+  flex-direction: column;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.paypal-reader-pairing__form input[type="text"] {
+  min-width: 220px;
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+.paypal-reader-pairing__message {
+  min-height: 1.2em;
+  font-style: italic;
+  color: #2271b1;
+  margin: 0.5em 0 0;
+}
+
+.paypal-reader-pairing__message.is-error {
+  color: #b32d2e;
+  font-style: normal;
+}
+
+.paypal-reader-pairing__empty td {
+  color: #646970;
+  font-style: italic;
+}

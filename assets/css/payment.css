@@ -32,3 +32,20 @@
   padding: 12px;
   font-size: 12px;
 }
+
+.paypal-reader-terminal__test-badge {
+  display: inline-block;
+  background: #f0b849;
+  color: #1d1d1d;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  margin-bottom: 8px;
+}
+
+.paypal-reader-terminal__empty {
+  color: #646970;
+  font-style: italic;
+}
