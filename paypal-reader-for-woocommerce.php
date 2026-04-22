@@ -27,11 +27,11 @@ if (!defined('PRWC_VERSION')) {
 }
 
 if (!defined('PRWC_PLUGIN_DIR')) {
-    define('PRWC_PLUGIN_DIR', __DIR__ . '/');
+    define('PRWC_PLUGIN_DIR', function_exists('plugin_dir_path') ? plugin_dir_path(__FILE__) : __DIR__ . '/');
 }
 
 if (!defined('PRWC_PLUGIN_URL')) {
-    define('PRWC_PLUGIN_URL', 'http://localhost/wp-content/plugins/paypal-reader-for-woocommerce/');
+    define('PRWC_PLUGIN_URL', function_exists('plugin_dir_url') ? plugin_dir_url(__FILE__) : 'http://localhost/wp-content/plugins/paypal-reader-for-woocommerce/');
 }
 
 spl_autoload_register(

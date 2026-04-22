@@ -12,6 +12,30 @@ This plugin is designed to be testable without a physical reader.
 4. Set an optional mock reader name and cancel behavior.
 5. Use the gateway on an `order-pay` checkout flow and complete the simulated reader flow.
 
+## Local disposable WordPress smoke test
+
+A Docker-based smoke environment is included in `e2e/`.
+
+### Start and verify the full flow
+
+```bash
+./e2e/smoke-test.sh
+```
+
+This will:
+- start WordPress + MariaDB
+- install WooCommerce
+- activate this plugin in mock mode
+- create a fresh pending order
+- drive the mock reader AJAX flow to completion
+- call the gateway `process_payment()` path inside WordPress
+- verify that the order reaches a paid state
+
+### Local site details
+
+- Store URL: `http://localhost:8091`
+- Admin login: `admin` / `admin`
+
 ## Notes
 
 - Live Zettle credentials are optional and currently fall back to the built-in mock flow.
