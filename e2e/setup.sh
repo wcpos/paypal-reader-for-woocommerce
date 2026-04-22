@@ -4,6 +4,10 @@ set -eu
 cd /var/www/html
 
 MOCK_CANCEL_BEHAVIOR=${PRWC_MOCK_CANCEL_BEHAVIOR:-canceled}
+PLUGIN_INSTALL_MODE=${PRWC_PLUGIN_INSTALL_MODE:-source}
+PLUGIN_SLUG=paypal-reader-for-woocommerce
+PLUGIN_SOURCE_DIR=/workspace
+PLUGIN_DIR=/var/www/html/wp-content/plugins/$PLUGIN_SLUG
 
 echo "Waiting for WordPress files to be ready..."
 until wp core version --path=/var/www/html >/dev/null 2>&1; do
@@ -30,6 +34,27 @@ if ! wp plugin is-installed woocommerce --path=/var/www/html >/dev/null 2>&1; th
 else
   wp plugin activate woocommerce --path=/var/www/html >/dev/null 2>&1 || true
 fi
+
+echo "Preparing PayPal Reader plugin ($PLUGIN_INSTALL_MODE mode)..."
+case "$PLUGIN_INSTALL_MODE" in
+  source)
+    rm -rf "$PLUGIN_DIR"
+    ln -s "$PLUGIN_SOURCE_DIR" "$PLUGIN_DIR"
+    ;;
+  zip)
+    VERSION=$(grep -oE 'Version:[[:space:]]*[0-9]+(\.[0-9]+)*' "$PLUGIN_SOURCE_DIR/$PLUGIN_SLUG.php" | head -1 | grep -oE '[0-9]+(\.[0-9]+)*')
+    ZIP_PATH="$PLUGIN_SOURCE_DIR/dist/${PLUGIN_SLUG}-${VERSION}.zip"
+    if [ ! -f "$ZIP_PATH" ]; then
+      echo "Packaged plugin zip not found: $ZIP_PATH" >&2
+      exit 1
+    fi
+    wp plugin install "$ZIP_PATH" --force --activate --path=/var/www/html >/dev/null
+    ;;
+  *)
+    echo "Unknown PRWC_PLUGIN_INSTALL_MODE: $PLUGIN_INSTALL_MODE" >&2
+    exit 1
+    ;;
+esac
 
 echo "Activating PayPal Reader plugin..."
 wp plugin activate paypal-reader-for-woocommerce --path=/var/www/html >/dev/null 2>&1 || true

@@ -6,6 +6,7 @@ COMPOSE=(docker compose -f "$SCRIPT_DIR/docker-compose.yml")
 BASE_URL="http://localhost:8091"
 SCENARIO=${PRWC_SMOKE_SCENARIO:-complete}
 MOCK_CANCEL_BEHAVIOR=${PRWC_MOCK_CANCEL_BEHAVIOR:-canceled}
+PLUGIN_INSTALL_MODE=${PRWC_PLUGIN_INSTALL_MODE:-source}
 
 cleanup() {
   local code=$?
@@ -17,11 +18,16 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "Starting Docker environment for scenario: $SCENARIO (cancel behavior: $MOCK_CANCEL_BEHAVIOR)"
+echo "Starting Docker environment for scenario: $SCENARIO (cancel behavior: $MOCK_CANCEL_BEHAVIOR, install mode: $PLUGIN_INSTALL_MODE)"
 "${COMPOSE[@]}" up -d db wordpress
 
 echo "Running WordPress setup..."
-PRWC_MOCK_CANCEL_BEHAVIOR="$MOCK_CANCEL_BEHAVIOR" "${COMPOSE[@]}" run --rm -e PRWC_MOCK_CANCEL_BEHAVIOR="$MOCK_CANCEL_BEHAVIOR" wp-cli >/tmp/paypal-reader-e2e-setup.log
+PRWC_MOCK_CANCEL_BEHAVIOR="$MOCK_CANCEL_BEHAVIOR" \
+PRWC_PLUGIN_INSTALL_MODE="$PLUGIN_INSTALL_MODE" \
+  "${COMPOSE[@]}" run --rm \
+    -e PRWC_MOCK_CANCEL_BEHAVIOR="$MOCK_CANCEL_BEHAVIOR" \
+    -e PRWC_PLUGIN_INSTALL_MODE="$PLUGIN_INSTALL_MODE" \
+    wp-cli >/tmp/paypal-reader-e2e-setup.log
 cat /tmp/paypal-reader-e2e-setup.log
 
 echo "Creating a fresh pending WooCommerce order..."

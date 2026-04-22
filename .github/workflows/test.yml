@@ -60,6 +60,9 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Build installable plugin zip
+        run: ./scripts/build-plugin-zip.sh
+
       - name: Run complete-path smoke test
         run: PRWC_SMOKE_SCENARIO=complete PRWC_MOCK_CANCEL_BEHAVIOR=canceled ./e2e/smoke-test.sh
 
@@ -78,5 +81,12 @@ jobs:
         run: PRWC_SMOKE_SCENARIO=too-late-cancel PRWC_MOCK_CANCEL_BEHAVIOR=too_late ./e2e/smoke-test.sh
 
       - name: Reset containers after too-late-cancel smoke test
+        if: always()
+        run: docker compose -f e2e/docker-compose.yml down -v
+
+      - name: Run zip-install smoke test
+        run: PRWC_PLUGIN_INSTALL_MODE=zip PRWC_SMOKE_SCENARIO=complete PRWC_MOCK_CANCEL_BEHAVIOR=canceled ./e2e/smoke-test.sh
+
+      - name: Reset containers after zip-install smoke test
         if: always()
         run: docker compose -f e2e/docker-compose.yml down -v
