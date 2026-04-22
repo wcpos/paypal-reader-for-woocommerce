@@ -33,6 +33,19 @@ jobs:
       - name: Check frontend JavaScript syntax
         run: node --check assets/js/payment.js
 
+      - name: Build installable plugin zip
+        run: ./scripts/build-plugin-zip.sh
+
+      - name: Validate packaged plugin contents
+        run: |
+          VERSION=$(grep -oE 'Version:[[:space:]]*[0-9]+(\.[0-9]+)*' paypal-reader-for-woocommerce.php | head -1 | grep -oE '[0-9]+(\.[0-9]+)*')
+          ZIP_PATH="dist/paypal-reader-for-woocommerce-${VERSION}.zip"
+          unzip -l "$ZIP_PATH"
+          if unzip -l "$ZIP_PATH" | grep -Eq 'paypal-reader-for-woocommerce/(tests|e2e|docs|paypal-reader-for-woocommerce-m1-spike)/'; then
+            echo "Packaged zip contains non-runtime files"
+            exit 1
+          fi
+
       - name: Run M1 spike tests
         working-directory: paypal-reader-for-woocommerce-m1-spike
         run: npm test

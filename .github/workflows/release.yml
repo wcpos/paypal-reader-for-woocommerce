@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build plugin zip
+        id: build_zip
+        run: |
+          ZIP_OUTPUT=$(./scripts/build-plugin-zip.sh)
+          VERSIONED_ZIP=$(printf '%s\n' "$ZIP_OUTPUT" | sed -n '1p')
+          LATEST_ZIP=$(printf '%s\n' "$ZIP_OUTPUT" | sed -n '2p')
+          VERSION=$(basename "$VERSIONED_ZIP" .zip | sed 's/^paypal-reader-for-woocommerce-//')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "versioned_zip=$VERSIONED_ZIP" >> "$GITHUB_OUTPUT"
+          echo "latest_zip=$LATEST_ZIP" >> "$GITHUB_OUTPUT"
+
+      - name: Upload zip artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: paypal-reader-for-woocommerce-zips
+          path: |
+            ${{ steps.build_zip.outputs.versioned_zip }}
+            ${{ steps.build_zip.outputs.latest_zip }}
+
+      - name: Create or update GitHub release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${{ steps.build_zip.outputs.version }}"
+          ZIP_PATH="${{ steps.build_zip.outputs.versioned_zip }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ZIP_PATH" --clobber
+          else
+            gh release create "$TAG" "$ZIP_PATH" \
+              --title "Release $TAG" \
+              --generate-notes
+          fi

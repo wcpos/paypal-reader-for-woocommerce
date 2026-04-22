@@ -43,6 +43,16 @@ This will:
 - Store URL: `http://localhost:8091`
 - Admin login: `admin` / `admin`
 
+## Build an installable zip
+
+```bash
+./scripts/build-plugin-zip.sh
+```
+
+This writes both:
+- `dist/paypal-reader-for-woocommerce-<version>.zip`
+- `dist/paypal-reader-for-woocommerce.zip`
+
 ## Notes
 
 - Live Zettle credentials are optional and currently fall back to the built-in mock flow.
