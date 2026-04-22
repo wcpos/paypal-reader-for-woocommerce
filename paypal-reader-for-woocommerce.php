@@ -2,7 +2,7 @@
 /**
  * Plugin Name: PayPal Reader for WooCommerce
  * Description: Accept in-person card payments in WooCommerce using a PayPal Reader (Zettle).
- * Version:     0.0.1
+ * Version:     0.1.0
  * Author:      kilbot
  * Author URI:  https://kilbot.com/
  * Update URI:  https://github.com/wcpos/paypal-reader-for-woocommerce
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 }
 
 if (!defined('PRWC_VERSION')) {
-    define('PRWC_VERSION', '0.0.1');
+    define('PRWC_VERSION', '0.1.0');
 }
 
 if (!defined('PRWC_PLUGIN_DIR')) {
