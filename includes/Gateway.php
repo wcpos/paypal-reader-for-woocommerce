@@ -27,7 +27,6 @@ class Gateway extends \WC_Payment_Gateway {
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, [$this, 'process_admin_options']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_payment_scripts']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
-        add_action('admin_notices', [$this, 'maybe_render_mock_reader_notice']);
     }
 
     public static function register_gateway(array $methods): array {
@@ -265,8 +264,11 @@ class Gateway extends \WC_Payment_Gateway {
      * PRWC_USE_MOCK_READER constant or filter). Catches the common foot-gun
      * of leaving the constant defined when promoting wp-config from a
      * dev/CI environment to staging or production.
+     *
+     * Registered from the plugin bootstrap so the notice runs on every admin
+     * page, independent of whether WooCommerce has instantiated the gateway.
      */
-    public function maybe_render_mock_reader_notice(): void {
+    public static function maybe_render_mock_reader_notice(): void {
         if (!Settings::use_mock_reader()) {
             return;
         }

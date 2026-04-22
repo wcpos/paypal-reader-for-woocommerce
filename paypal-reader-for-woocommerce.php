@@ -64,4 +64,7 @@ function init(): void {
 
 if (function_exists('add_action')) {
     add_action('plugins_loaded', __NAMESPACE__ . '\init', 11);
+    // Register the mock-reader notice at bootstrap so it fires on every
+    // admin page regardless of whether WC has instantiated the gateway.
+    add_action('admin_notices', [Gateway::class, 'maybe_render_mock_reader_notice']);
 }
