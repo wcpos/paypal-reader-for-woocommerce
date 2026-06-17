@@ -5,6 +5,7 @@ cd /var/www/html
 
 MOCK_CANCEL_BEHAVIOR=${PRWC_MOCK_CANCEL_BEHAVIOR:-canceled}
 PLUGIN_INSTALL_MODE=${PRWC_PLUGIN_INSTALL_MODE:-source}
+WOOCOMMERCE_VERSION=${PRWC_WOOCOMMERCE_VERSION:-10.7.0}
 PLUGIN_SLUG=paypal-reader-for-woocommerce
 PLUGIN_SOURCE_DIR=/workspace
 PLUGIN_DIR=/var/www/html/wp-content/plugins/$PLUGIN_SLUG
@@ -33,8 +34,8 @@ wp config set PRWC_USE_MOCK_READER true --raw --type=constant --path=/var/www/ht
 wp config set PRWC_MOCK_CANCEL_BEHAVIOR "$MOCK_CANCEL_BEHAVIOR" --type=constant --path=/var/www/html >/dev/null
 
 if ! wp plugin is-installed woocommerce --path=/var/www/html >/dev/null 2>&1; then
-  echo "Installing WooCommerce..."
-  wp plugin install woocommerce --activate --path=/var/www/html
+  echo "Installing WooCommerce $WOOCOMMERCE_VERSION..."
+  wp plugin install woocommerce --version="$WOOCOMMERCE_VERSION" --activate --path=/var/www/html
 else
   wp plugin activate woocommerce --path=/var/www/html >/dev/null 2>&1 || true
 fi
