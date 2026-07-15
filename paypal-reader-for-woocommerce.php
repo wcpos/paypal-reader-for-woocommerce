@@ -6,7 +6,7 @@
  * Author:      kilbot
  * Author URI:  https://kilbot.com/
  * Update URI:  https://github.com/wcpos/paypal-reader-for-woocommerce
- * License:     GPL v2 or later
+ * License:     GPL-3.0
  * Text Domain: paypal-reader-for-woocommerce
  *
  * Requires at least: 5.2
