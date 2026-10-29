@@ -30,6 +30,15 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "versioned_zip=$VERSIONED_ZIP" >> "$GITHUB_OUTPUT"
           echo "latest_zip=$LATEST_ZIP" >> "$GITHUB_OUTPUT"
+          # WordPress 7.1.4+ unpacks packages into a randomly suffixed folder and installs a flat zip
+          # there, so the zip must hold the installed folder (catalog slug) as its only top-level entry.
+          for ZIP in "$VERSIONED_ZIP" "$LATEST_ZIP"; do
+            TOP_LEVEL=$(unzip -Z1 "$ZIP" | cut -d/ -f1 | sort -u)
+            if [ "$TOP_LEVEL" != "paypal-reader-for-woocommerce" ]; then
+              echo "::error::$ZIP must contain only paypal-reader-for-woocommerce/ at the top level, found: $TOP_LEVEL"
+              exit 1
+            fi
+          done
 
       - name: Upload zip artifacts
         uses: actions/upload-artifact@v4
