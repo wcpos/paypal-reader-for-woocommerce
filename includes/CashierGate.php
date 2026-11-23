@@ -34,15 +34,19 @@ final class CashierGate {
     }
 
     public static function verify(string $token, $order, ?int $now = null): bool {
+        return self::verified_user($token, $order, $now) > 0;
+    }
+
+    public static function verified_user(string $token, $order, ?int $now = null): int {
         try {
             $parts = explode('.', $token);
-            if (count($parts) !== 3 || !ctype_digit($parts[0]) || !ctype_digit($parts[1])) { return false; }
+            if (count($parts) !== 3 || !ctype_digit($parts[0]) || !ctype_digit($parts[1])) { return 0; }
             [$user_id, $expires, $hmac] = $parts;
             $now = $now ?? time();
             return $now <= $expires && $expires <= $now + self::TTL
                 && hash_equals(hash_hmac('sha256', $order->get_id() . '|' . $order->get_order_key() . '|' . $user_id . '|' . $expires, wp_salt('auth')), $hmac)
-                && self::user_may_take_payment((int) $user_id, $order);
-        } catch (\Throwable $error) { return false; }
+                && self::user_may_take_payment((int) $user_id, $order) ? (int) $user_id : 0;
+        } catch (\Throwable $error) { return 0; }
     }
 
     private static function wcpos(callable $call, string $type) {

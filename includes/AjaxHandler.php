@@ -85,7 +85,8 @@ class AjaxHandler {
         }
 
         $order = $this->get_order_from_request();
-        if (!$order || !$this->can_access_order($order) || !$this->cashier_allowed($order)) {
+        $cashier_id = ($order && $this->can_access_order($order)) ? $this->cashier_user($order) : 0;
+        if ($cashier_id === 0) {
             wp_send_json_error(__('Invalid order access.', 'paypal-reader-for-woocommerce'));
             return;
         }
@@ -106,10 +107,11 @@ class AjaxHandler {
             $order->update_meta_data('_prwc_attempt_id', $attempt['attempt_id']);
             $order->update_meta_data('_prwc_reader_id', $reader_id);
             $order->update_meta_data('_prwc_payment_state', 'pending');
+            $order->update_meta_data('_prwc_started_amount', $amount);
             $order->save();
             $order->add_order_note(sprintf('PayPal Reader: started mock payment attempt %s on %s', $attempt['attempt_id'], $reader_id));
 
-            wp_send_json_success(array_merge($attempt, ['transport' => 'mock']));
+            wp_send_json_success(array_merge($attempt, ['transport' => 'mock', 'cashierToken' => CashierGate::mint($order, $cashier_id)]));
             return;
         }
 
@@ -131,11 +133,13 @@ class AjaxHandler {
         $order->update_meta_data('_prwc_reader_id', $reader_id);
         $order->update_meta_data('_prwc_internal_trace_id', $internal_trace_id);
         $order->update_meta_data('_prwc_payment_state', 'pending');
+        $order->update_meta_data('_prwc_started_amount', $amount);
         $order->save();
         $order->add_order_note(sprintf('PayPal Reader: started live payment on reader %s (trace %s)', $reader_id, $internal_trace_id));
 
         wp_send_json_success([
             'transport'       => 'zettle-ws',
+            'cashierToken'    => CashierGate::mint($order, $cashier_id),
             'wsUrl'           => $session['location'],
             'linkId'          => $reader_id,
             'channelId'       => $channel_id,
@@ -148,11 +152,12 @@ class AjaxHandler {
         ]);
     }
 
-    private function cashier_allowed($order): bool {
+    private function cashier_user($order): int {
         if (isset($_POST['cashier_token']) && is_string($_POST['cashier_token']) && $_POST['cashier_token'] !== '') {
-            return CashierGate::verify(sanitize_text_field(wp_unslash($_POST['cashier_token'])), $order);
+            return CashierGate::verified_user(sanitize_text_field(wp_unslash($_POST['cashier_token'])), $order);
         }
-        return get_current_user_id() > 0 && CashierGate::user_may_take_payment(get_current_user_id(), $order);
+        $user_id = get_current_user_id();
+        return $user_id > 0 && CashierGate::user_may_take_payment($user_id, $order) ? $user_id : 0;
     }
 
     public function confirm_payment(): void {
@@ -161,8 +166,17 @@ class AjaxHandler {
         }
 
         $order = $this->get_order_from_request();
-        if (!$order || !$this->can_access_order($order)) {
+        if (!$order || !$this->can_access_order($order) || $this->cashier_user($order) === 0) {
             wp_send_json_error(__('Invalid order access.', 'paypal-reader-for-woocommerce'));
+            return;
+        }
+
+        $posted_trace = isset($_POST['internal_trace_id']) && is_string($_POST['internal_trace_id'])
+            ? sanitize_text_field(wp_unslash($_POST['internal_trace_id'])) : '';
+        $stored_trace = (string) $order->get_meta('_prwc_internal_trace_id');
+        if ($order->is_paid() || $order->get_meta('_prwc_payment_state') !== 'pending'
+            || $stored_trace === '' || !hash_equals($stored_trace, $posted_trace)) {
+            wp_send_json_error(__('No payment is waiting for confirmation.', 'paypal-reader-for-woocommerce'));
             return;
         }
 
@@ -192,7 +206,7 @@ class AjaxHandler {
         // order is server-authoritative; the browser is not trusted.
         $expected_amount = (int) round(((float) $order->get_total()) * 100);
         $reported_amount = (int) ($payload['amount'] ?? 0);
-        if ($reported_amount !== $expected_amount) {
+        if ($reported_amount !== $expected_amount || (int) $order->get_meta('_prwc_started_amount') !== $expected_amount) {
             $order->update_meta_data('_prwc_payment_state', 'amount_mismatch');
             $order->save();
             $order->add_order_note(sprintf(
