@@ -44,4 +44,12 @@ return [
     'start payment: a logged-in user WCPOS lets edit the order starts the payment' => function () use ($start): void {
         assert_same(true, $start('cookie_cashier')['success'] ?? null);
     },
+    'start payment: a valid cashier token stores the started amount and returns a fresh token' => function () use ($start): void {
+        $r = $start('valid_token');
+        assert_same(1000, $r['started_amount'] ?? null);
+        assert_same(true, $r['fresh_token_valid'] ?? null);
+    },
+    'start payment: a logged-in cashier receives a fresh token' => function () use ($start): void {
+        assert_same(true, $start('cookie_cashier')['fresh_token_valid'] ?? null);
+    },
 ];

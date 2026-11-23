@@ -9,7 +9,7 @@
  *   other_order     plus a cashier payment token minted for order 22
  *   cookie_cashier  no cashier token; logged-in user 7, whom WCPOS lets edit order 21
  *   cookie_stranger no cashier token; logged-in user 9, whom WCPOS does not
- * Prints {"success":bool,"has_access_token":bool,"saved":bool} as JSON.
+ * Prints {"success":bool,"has_access_token":bool,"saved":bool,"started_amount":int|null,"fresh_token_valid":bool} as JSON.
  */
 
 declare(strict_types=1);
@@ -18,6 +18,7 @@ namespace {
     $GLOBALS['prwc_caller'] = (string) ($argv[1] ?? '');
     $GLOBALS['prwc_json'] = null;
     $GLOBALS['prwc_saved'] = false;
+    $GLOBALS['prwc_meta_updates'] = [];
 
     class WP_Error {
         public function get_error_message(): string { return 'error'; }
@@ -33,7 +34,7 @@ namespace {
         public function get_order_key(): string { return 'wc_order_key' . $this->id; }
         public function get_total(): string { return '10.00'; }
         public function get_currency(): string { return 'USD'; }
-        public function update_meta_data($key, $value): void {}
+        public function update_meta_data($key, $value): void { $GLOBALS['prwc_meta_updates'][$key] = $value; }
         public function add_order_note($note): void {}
         public function save(): void { $GLOBALS['prwc_saved'] = true; }
     }
@@ -117,9 +118,12 @@ namespace {
     }
 
     $json = $GLOBALS['prwc_json'];
+    $data = $json['data'] ?? [];
     echo json_encode([
         'success'          => is_array($json) && $json['success'] === true,
         'has_access_token' => strpos((string) json_encode($json), 'MERCHANT-SECRET-TOKEN') !== false,
         'saved'            => $GLOBALS['prwc_saved'],
+        'started_amount'   => $GLOBALS['prwc_meta_updates']['_prwc_started_amount'] ?? null,
+        'fresh_token_valid' => CashierGate::verify($data['cashierToken'] ?? '', new PrwcStartOrder(21)),
     ]);
 }
