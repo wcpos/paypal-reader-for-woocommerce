@@ -1,8 +1,8 @@
 <?php
 /**
- * Calls AjaxHandler::confirm_payment in live mode for order 21, in its own PHP process.
+ * Calls AjaxHandler::confirm_payment or cancel_payment in live mode for order 21, in its own PHP process.
  * Usage: php confirm-payment-live.php <caller>
- * Prints {"success":bool,"saved":bool,"completed":bool} as JSON.
+ * Prints {"success":bool,"saved":bool,"completed":bool,"canceled":bool} as JSON.
  */
 
 declare(strict_types=1);
@@ -25,7 +25,7 @@ namespace {
         private $meta = [
             '_prwc_payment_state' => 'pending',
             '_prwc_internal_trace_id' => 'prwc-21-TRACE',
-            '_prwc_started_amount' => 1000,
+            '_prwc_started_amount' => '1000',
         ];
         public function __construct(int $id) {
             $this->id = $id;
@@ -34,6 +34,8 @@ namespace {
                 unset($this->meta['_prwc_internal_trace_id']);
             } elseif ($GLOBALS['prwc_caller'] === 'replayed') {
                 $this->meta['_prwc_payment_state'] = 'completed';
+            } elseif ($GLOBALS['prwc_caller'] === 'no_trace_both') {
+                unset($this->meta['_prwc_internal_trace_id']);
             }
         }
         public function get_id(): int { return $this->id; }
@@ -100,11 +102,11 @@ namespace {
         'order_key' => 'wc_order_key21',
         'internal_trace_id' => 'prwc-21-TRACE',
         'result' => json_encode([
-            'resultStatus' => 'COMPLETED',
-            'resultPayload' => ['amount' => $caller === 'total_changed' ? 1200 : 1000, 'CARD_PAYMENT_UUID' => 'u-1'],
+            'resultStatus' => $caller === 'lowercase_completed' ? 'completed' : 'COMPLETED',
+            'resultPayload' => ['amount' => $caller === 'total_changed' ? 1200 : ($caller === 'reported_mismatch' ? 900 : 1000), 'CARD_PAYMENT_UUID' => 'u-1'],
         ]),
     ];
-    if (!in_array($caller, ['key_only', 'cookie_cashier'], true)) {
+    if (!in_array($caller, ['key_only', 'cookie_cashier', 'cancel_key_only'], true)) {
         $_POST['cashier_token'] = CashierGate::mint(
             new PrwcConfirmOrder($caller === 'other_order_token' ? 22 : 21),
             7,
@@ -115,10 +117,16 @@ namespace {
         $_POST['internal_trace_id'] = 'prwc-21-OTHER';
     } elseif ($caller === 'no_trace_posted') {
         unset($_POST['internal_trace_id']);
+    } elseif ($caller === 'no_trace_both') {
+        $_POST['internal_trace_id'] = '';
     }
 
     try {
-        (new AjaxHandler())->confirm_payment();
+        if (strpos($caller, 'cancel_') === 0) {
+            (new AjaxHandler())->cancel_payment();
+        } else {
+            (new AjaxHandler())->confirm_payment();
+        }
     } catch (PrwcStop $stop) {
     }
 
@@ -127,5 +135,6 @@ namespace {
         'success' => is_array($json) && $json['success'] === true,
         'saved' => $GLOBALS['prwc_saved'],
         'completed' => in_array(['_prwc_payment_state', 'completed'], $GLOBALS['prwc_meta_updates'], true),
+        'canceled' => in_array(['_prwc_payment_state', 'canceled'], $GLOBALS['prwc_meta_updates'], true),
     ]);
 }

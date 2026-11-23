@@ -195,7 +195,7 @@ class AjaxHandler {
         $payload = is_array($result['resultPayload'] ?? null) ? $result['resultPayload'] : [];
 
         if ($status !== 'COMPLETED') {
-            $order->update_meta_data('_prwc_payment_state', strtolower($status) ?: 'failed');
+            $order->update_meta_data('_prwc_payment_state', 'failed');
             $order->save();
             $order->add_order_note('PayPal Reader: payment did not complete (status: ' . ($status ?: 'unknown') . ').');
             wp_send_json_error(__('Payment did not complete.', 'paypal-reader-for-woocommerce'));
@@ -278,7 +278,7 @@ class AjaxHandler {
         }
 
         $order = $this->get_order_from_request();
-        if (!$order || !$this->can_access_order($order)) {
+        if (!$order || !$this->can_access_order($order) || $this->cashier_user($order) === 0) {
             wp_send_json_error(__('Invalid order access.', 'paypal-reader-for-woocommerce'));
             return;
         }

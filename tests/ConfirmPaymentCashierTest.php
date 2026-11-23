@@ -57,4 +57,24 @@ return [
     'confirm payment: a logged-in user WCPOS lets edit the order confirms the matching attempt' => function () use ($confirm): void {
         assert_same(true, $confirm('cookie_cashier')['success'] ?? null);
     },
+    'confirm payment: a mismatched reported amount is refused' => function () use ($confirm, $refused): void {
+        $refused($confirm('reported_mismatch'), 'reported mismatch', false);
+    },
+    'confirm payment: missing stored and posted traces are refused without writes' => function () use ($confirm, $refused): void {
+        $refused($confirm('no_trace_both'), 'no trace both');
+    },
+    'confirm payment: a lowercase completed status is refused without completing the order' => function () use ($confirm, $refused): void {
+        $refused($confirm('lowercase_completed'), 'lowercase completed', false);
+    },
+    'cancel payment: order key and nonce alone are refused without writes' => function () use ($confirm): void {
+        $r = $confirm('cancel_key_only');
+        assert_same(false, $r['success'] ?? null);
+        assert_same(false, $r['canceled'] ?? null);
+        assert_same(false, $r['saved'] ?? null);
+    },
+    'cancel payment: a valid cashier token cancels the payment' => function () use ($confirm): void {
+        $r = $confirm('cancel_valid_token');
+        assert_same(true, $r['success'] ?? null);
+        assert_same(true, $r['canceled'] ?? null);
+    },
 ];
