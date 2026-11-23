@@ -79,13 +79,59 @@ fi
 
 NONCE=$(printf '%s' "$PAYPAL_READER_JSON" | python3 -c 'import sys, json; print(json.load(sys.stdin)["nonce"])')
 AJAX_URL=$(printf '%s' "$PAYPAL_READER_JSON" | python3 -c 'import sys, json; print(json.load(sys.stdin)["ajaxUrl"])')
+printf '%s' "$PAYPAL_READER_JSON" | python3 -c 'import sys, json; d=json.load(sys.stdin); assert d.get("cashierToken") == "", "storefront page must carry no cashier token"; assert "accessToken" not in d; print("Storefront page carries no cashier or merchant token")'
+
+echo "Checking the cashier gate against the real WCPOS classes..."
+GATE_JSON=$("${COMPOSE[@]}" run --rm -e PRWC_ORDER_ID="$ORDER_ID" --entrypoint wp wp-cli eval '
+use WCPOS\WooCommercePOS\PayPalReader\CashierGate;
+$order = wc_get_order((int) getenv("PRWC_ORDER_ID"));
+$admin = get_user_by("login", "admin");
+$subscriber = get_user_by("login", "cashier-none");
+$auth = WCPOS\WooCommercePOS\Services\Auth::instance();
+$jwt = $auth->generate_access_token($admin);
+$subscriber_jwt = $auth->generate_access_token($subscriber);
+echo wp_json_encode(array(
+    "admin_id" => $admin->ID,
+    "valid" => CashierGate::user_from_wcpos_token(is_string($jwt) ? $jwt : "", $order),
+    "garbage" => CashierGate::user_from_wcpos_token("not.a.jwt", $order),
+    "subscriber" => CashierGate::user_from_wcpos_token(is_string($subscriber_jwt) ? $subscriber_jwt : "", $order),
+    "admin_may" => CashierGate::user_may_take_payment($admin->ID, $order),
+    "subscriber_may" => CashierGate::user_may_take_payment($subscriber->ID, $order),
+    "jwt" => is_string($jwt) ? $jwt : "",
+    "pay_url" => add_query_arg(array("pay_for_order" => "true", "key" => $order->get_order_key()), wcpos_checkout_url("order-pay/" . $order->get_id())),
+));
+' --path=/var/www/html)
+printf '%s' "$GATE_JSON" | python3 -c 'import sys, json; d=json.load(sys.stdin); assert d["jwt"] != ""; assert d["valid"] == d["admin_id"] > 0, d; assert d["garbage"] == 0; assert d["subscriber"] == 0; assert d["admin_may"] is True; assert d["subscriber_may"] is False; print("Cashier gate verified against real WCPOS classes")'
+CASHIER_JWT=$(printf '%s' "$GATE_JSON" | python3 -c 'import sys, json; print(json.load(sys.stdin)["jwt"])')
+WCPOS_PAY_URL=$(printf '%s' "$GATE_JSON" | python3 -c 'import sys, json; print(json.load(sys.stdin)["pay_url"])')
+
+echo "Order key and nonce alone must not start a payment..."
+NO_TOKEN_JSON=$(curl -fsSL -X POST "$AJAX_URL" \
+  --data-urlencode "action=paypal_reader_start_payment" \
+  --data-urlencode "nonce=$NONCE" \
+  --data-urlencode "order_id=$ORDER_ID" \
+  --data-urlencode "order_key=$ORDER_KEY" \
+  --data-urlencode "reader_id=mock-reader-1")
+printf '%s' "$NO_TOKEN_JSON" | python3 -c 'import sys, json; d=json.load(sys.stdin); assert d["success"] is False, d; print("Start without cashier token refused")'
+
+echo "Fetching the WCPOS pay page with the cashier JWT..."
+POS_HTML=$(curl -fsSL -G "$WCPOS_PAY_URL" --data-urlencode "token=$CASHIER_JWT")
+POS_READER_JSON=$(printf '%s' "$POS_HTML" | python3 -c 'import re, sys; html=sys.stdin.read(); m=re.search(r"var paypalReaderData = (\{.*?\});", html, re.S); print(m.group(1) if m else "")')
+if [ -z "$POS_READER_JSON" ]; then
+  echo "Failed to extract paypalReaderData from the WCPOS pay page" >&2
+  exit 1
+fi
+CASHIER_TOKEN=$(printf '%s' "$POS_READER_JSON" | python3 -c 'import sys, json; d=json.load(sys.stdin); assert "accessToken" not in d; t=d.get("cashierToken", ""); assert t != "", "WCPOS pay page must carry a cashier token"; print(t)')
+NONCE=$(printf '%s' "$POS_READER_JSON" | python3 -c 'import sys, json; print(json.load(sys.stdin)["nonce"])')
+echo "WCPOS pay page carries a cashier token"
 
 echo "Verifying mock reader list..."
 READERS_JSON=$(curl -fsSL -X POST "$AJAX_URL" \
   --data-urlencode "action=paypal_reader_get_readers" \
   --data-urlencode "nonce=$NONCE" \
   --data-urlencode "order_id=$ORDER_ID" \
-  --data-urlencode "order_key=$ORDER_KEY")
+  --data-urlencode "order_key=$ORDER_KEY" \
+  --data-urlencode "cashier_token=$CASHIER_TOKEN")
 printf '%s' "$READERS_JSON" | python3 -c 'import sys, json; data=json.load(sys.stdin); assert data["success"] is True; assert data["data"]["mode"] == "mock"; assert len(data["data"]["readers"]) == 1; print(data["data"]["readers"][0]["id"])' >/tmp/paypal-reader-id.txt
 READER_ID=$(cat /tmp/paypal-reader-id.txt)
 
@@ -95,6 +141,7 @@ START_JSON=$(curl -fsSL -X POST "$AJAX_URL" \
   --data-urlencode "nonce=$NONCE" \
   --data-urlencode "order_id=$ORDER_ID" \
   --data-urlencode "order_key=$ORDER_KEY" \
+  --data-urlencode "cashier_token=$CASHIER_TOKEN" \
   --data-urlencode "reader_id=$READER_ID" \
   --data-urlencode "amount=$REQUEST_AMOUNT_MINOR")
 printf '%s' "$START_JSON" | python3 -c 'import sys, json; data=json.load(sys.stdin); assert data["success"] is True; assert data["data"]["state"] == "pending"; print(data["data"]["attempt_id"])' >/tmp/paypal-reader-attempt.txt
@@ -107,7 +154,8 @@ if [ "$SCENARIO" = "cancel" ] || [ "$SCENARIO" = "too-late-cancel" ]; then
     --data-urlencode "action=paypal_reader_cancel_payment" \
     --data-urlencode "nonce=$NONCE" \
     --data-urlencode "order_id=$ORDER_ID" \
-    --data-urlencode "order_key=$ORDER_KEY")
+    --data-urlencode "order_key=$ORDER_KEY" \
+  --data-urlencode "cashier_token=$CASHIER_TOKEN")
   echo "$CANCEL_JSON"
   printf '%s' "$CANCEL_JSON" | python3 -c 'import sys, json; data=json.load(sys.stdin); assert data["success"] is True; print(data["data"].get("cancel_behavior", ""))' >/tmp/paypal-reader-cancel-behavior.txt
   CANCEL_RESULT=$(cat /tmp/paypal-reader-cancel-behavior.txt)
@@ -120,7 +168,8 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
     --data-urlencode "action=paypal_reader_check_payment_status" \
     --data-urlencode "nonce=$NONCE" \
     --data-urlencode "order_id=$ORDER_ID" \
-    --data-urlencode "order_key=$ORDER_KEY")
+    --data-urlencode "order_key=$ORDER_KEY" \
+  --data-urlencode "cashier_token=$CASHIER_TOKEN")
   FINAL_STATE=$(printf '%s' "$STATUS_JSON" | python3 -c 'import sys, json; data=json.load(sys.stdin); assert data["success"] is True; print(data["data"]["state"])')
   echo "Payment state: $FINAL_STATE"
   if [ "$FINAL_STATE" = "completed" ] || [ "$FINAL_STATE" = "canceled" ]; then

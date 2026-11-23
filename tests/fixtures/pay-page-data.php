@@ -51,6 +51,7 @@ function wp_create_nonce($action = -1): string { return 'nonce-' . $action; }
 function wp_unslash($value) { return is_string($value) ? stripslashes($value) : $value; }
 function sanitize_text_field($value): string { return trim((string) $value); }
 function current_user_can(...$args): bool { return false; }
+function did_action($hook): int { return 0; }
 
 require __DIR__ . '/../../paypal-reader-for-woocommerce.php';
 

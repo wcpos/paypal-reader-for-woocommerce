@@ -175,6 +175,14 @@ class Gateway extends \WC_Payment_Gateway {
             return;
         }
 
+        $cashier_token = '';
+        if (did_action('wcpos_before_pay') > 0) {
+            $jwt = $_GET['wcpos_jwt'] ?? $_GET['token'] ?? '';
+            $jwt = is_string($jwt) ? sanitize_text_field(wp_unslash($jwt)) : '';
+            $user_id = CashierGate::user_from_wcpos_token($jwt, $order);
+            if ($user_id > 0) { $cashier_token = CashierGate::mint($order, $user_id); }
+        }
+
         wp_enqueue_script(
             'paypal-reader-for-woocommerce-payment',
             PRWC_PLUGIN_URL . 'assets/js/payment.js',
@@ -198,6 +206,7 @@ class Gateway extends \WC_Payment_Gateway {
                 'nonce' => wp_create_nonce('paypal_reader_nonce'),
                 'orderId' => $order_id,
                 'orderKey' => $order->get_order_key(),
+                'cashierToken' => $cashier_token,
                 'amount' => (int) round(((float) $order->get_total()) * 100),
                 'currency' => $order->get_currency(),
                 'testMode' => Settings::is_test_mode(),

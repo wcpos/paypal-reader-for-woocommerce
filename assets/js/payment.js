@@ -44,6 +44,7 @@
       nonce: config.nonce,
       order_id: String(config.orderId),
       order_key: config.orderKey,
+      cashier_token: config.cashierToken || '',
     }, extra || {}));
 
     const response = await fetch(config.ajaxUrl, {
@@ -146,6 +147,7 @@
       reader_id: selectedReaderId,
       amount: String(config.amount),
     });
+    if (started.cashierToken) config.cashierToken = started.cashierToken;
     setStatus(`Started attempt ${started.attempt_id}`);
 
     clearInterval(pollTimer);
@@ -169,10 +171,11 @@
     socket.send(JSON.stringify(message));
   }
 
-  async function confirmPayment(result) {
+  async function confirmPayment(result, internalTraceId) {
     try {
       await request('paypal_reader_confirm_payment', {
         result: JSON.stringify(result),
+        internal_trace_id: internalTraceId || '',
       });
       setStatus(strings.paymentComplete || 'Payment complete. Submitting order…');
       setTimeout(submitCheckout, 400);
@@ -252,7 +255,7 @@
           if (cancelButton) cancelButton.disabled = true;
           const resultStatus = payload.resultStatus || payload.status || '';
           if (resultStatus === 'COMPLETED') {
-            confirmPayment(payload);
+            confirmPayment(payload, session.internalTraceId);
           } else if (resultStatus === 'CANCELLED' || resultStatus === 'CANCELED') {
             setStatus(strings.paymentCanceled || 'Payment canceled.');
             resetButtons();
@@ -284,6 +287,7 @@
       reader_id: selectedReaderId,
       amount: String(config.amount),
     });
+    if (session.cashierToken) config.cashierToken = session.cashierToken;
     openZettleSocket(session);
   }
 
