@@ -6,6 +6,7 @@ cd /var/www/html
 MOCK_CANCEL_BEHAVIOR=${PRWC_MOCK_CANCEL_BEHAVIOR:-canceled}
 PLUGIN_INSTALL_MODE=${PRWC_PLUGIN_INSTALL_MODE:-source}
 WOOCOMMERCE_VERSION=${PRWC_WOOCOMMERCE_VERSION:-10.7.0}
+WCPOS_VERSION=${PRWC_WCPOS_VERSION:-2.0.5}
 PLUGIN_SLUG=paypal-reader-for-woocommerce
 PLUGIN_SOURCE_DIR=/workspace
 PLUGIN_DIR=/var/www/html/wp-content/plugins/$PLUGIN_SLUG
@@ -38,6 +39,15 @@ if ! wp plugin is-installed woocommerce --path=/var/www/html >/dev/null 2>&1; th
   wp plugin install woocommerce --version="$WOOCOMMERCE_VERSION" --activate --path=/var/www/html
 else
   wp plugin activate woocommerce --path=/var/www/html >/dev/null 2>&1 || true
+fi
+
+# The cashier gate borrows WCPOS's own cashier checks; the smoke test runs them against the real
+# classes at this pinned version, so an upstream rename turns the smoke red instead of the gate off.
+if ! wp plugin is-installed woocommerce-pos --path=/var/www/html >/dev/null 2>&1; then
+  echo "Installing WCPOS $WCPOS_VERSION..."
+  wp plugin install woocommerce-pos --version="$WCPOS_VERSION" --activate --path=/var/www/html
+else
+  wp plugin activate woocommerce-pos --path=/var/www/html >/dev/null 2>&1 || true
 fi
 
 echo "Preparing PayPal Reader plugin ($PLUGIN_INSTALL_MODE mode)..."
@@ -88,6 +98,11 @@ if [ -z "$PRODUCT_ID" ]; then
   cat /tmp/product.json
 else
   echo "Test product already exists: $PRODUCT_ID"
+fi
+
+if ! wp user get cashier-none --path=/var/www/html >/dev/null 2>&1; then
+  echo "Creating a subscriber, who may not open the POS..."
+  wp user create cashier-none cashier-none@example.com --role=subscriber --user_pass=cashier-none --path=/var/www/html >/dev/null
 fi
 
 echo "Setup complete!"
