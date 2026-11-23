@@ -44,6 +44,7 @@
       nonce: config.nonce,
       order_id: String(config.orderId),
       order_key: config.orderKey,
+      cashier_token: config.cashierToken || '',
     }, extra || {}));
 
     const response = await fetch(config.ajaxUrl, {

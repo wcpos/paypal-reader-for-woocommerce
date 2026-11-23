@@ -85,7 +85,7 @@ class AjaxHandler {
         }
 
         $order = $this->get_order_from_request();
-        if (!$order || !$this->can_access_order($order)) {
+        if (!$order || !$this->can_access_order($order) || !$this->cashier_allowed($order)) {
             wp_send_json_error(__('Invalid order access.', 'paypal-reader-for-woocommerce'));
             return;
         }
@@ -146,6 +146,13 @@ class AjaxHandler {
             'currency'        => $currency,
             'tippingType'     => 'NONE',
         ]);
+    }
+
+    private function cashier_allowed($order): bool {
+        if (isset($_POST['cashier_token']) && is_string($_POST['cashier_token']) && $_POST['cashier_token'] !== '') {
+            return CashierGate::verify(sanitize_text_field(wp_unslash($_POST['cashier_token'])), $order);
+        }
+        return get_current_user_id() > 0 && CashierGate::user_may_take_payment(get_current_user_id(), $order);
     }
 
     public function confirm_payment(): void {
