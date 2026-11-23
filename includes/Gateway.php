@@ -167,6 +167,14 @@ class Gateway extends \WC_Payment_Gateway {
             return;
         }
 
+        // The order's own key must already be in the request.
+        $key = isset($_GET['key']) && is_string($_GET['key'])
+            ? (string) (function_exists('wp_unslash') ? wp_unslash($_GET['key']) : $_GET['key'])
+            : '';
+        if ($key === '' || !hash_equals((string) $order->get_order_key(), $key)) {
+            return;
+        }
+
         wp_enqueue_script(
             'paypal-reader-for-woocommerce-payment',
             PRWC_PLUGIN_URL . 'assets/js/payment.js',
